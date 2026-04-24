@@ -1,0 +1,1686 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Lift Log</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #0f0f10;
+    --surface2: #242428;
+    --surface-weight: #1a2410;
+    --border: #2e2e33;
+    --border-weight: #3a4a20;
+    --accent: #c8f135;
+    --text: #f0f0ee;
+    --text-muted: #7a7a80;
+    --text-dim: #4a4a50;
+    --danger: #ff5a5a;
+    --skip-color: #f0a030;
+    --col1-width: 72px;
+    --prev-col-width: 82px;
+    --input-h: 48px;
+    --chevron-w: 22px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    min-height: 100vh;
+  }
+
+  header {
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .logo {
+    font-family: 'Space Mono', monospace;
+    font-size: 17px;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: -0.5px;
+  }
+  .hamburger {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .hamburger span {
+    display: block;
+    width: 22px;
+    height: 2px;
+    background: var(--text-muted);
+    border-radius: 2px;
+  }
+
+  .table-scroll {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  table {
+    border-collapse: collapse;
+    width: max-content;
+    min-width: 100%;
+  }
+
+  /* Sticky col 1 */
+  thead th:first-child,
+  tbody td:first-child {
+    position: sticky;
+    left: 0;
+    z-index: 10;
+    background: var(--bg);
+  }
+  thead th:first-child::after,
+  tbody td:first-child::after {
+    content: '';
+    position: absolute;
+    top: 0; right: -10px;
+    width: 10px; height: 100%;
+    background: linear-gradient(to right, rgba(0,0,0,0.35), transparent);
+    pointer-events: none;
+  }
+
+  thead th {
+    padding: 5px 6px;
+    text-align: left;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    vertical-align: bottom;
+    width: var(--prev-col-width);
+    min-width: var(--prev-col-width);
+  }
+  thead th:first-child { width: var(--col1-width); min-width: var(--col1-width); }
+  thead th:nth-child(2) { color: var(--accent); }
+  thead th.date-latest { color: var(--text-muted); }
+
+  tbody tr { border-bottom: 1px solid var(--border); height: 62px; }
+  tbody tr.save-row { height: auto; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody td { padding: 0 6px; vertical-align: middle; overflow: hidden; max-height: 62px; }
+  tbody td:first-child { padding: 0 4px 0 6px; }
+  td.editing-cell { padding: 0 5px; }
+  td.prev-cell { padding: 0 6px; vertical-align: middle; }
+
+  .machine-name {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.3;
+    width: var(--col1-width);
+    min-width: var(--col1-width);
+    word-break: break-word;
+    padding-right: 4px;
+  }
+
+  /* ── Skipped cell ── */
+  .skipped-cell {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 2px;
+  }
+  .skipped-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    flex: 1;
+  }
+  .unskip-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 5px;
+    padding: 5px 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    cursor: pointer;
+    text-transform: uppercase;
+    touch-action: manipulation;
+    white-space: nowrap;
+  }
+  .unskip-btn:active { border-color: var(--text-muted); color: var(--text); }
+
+  /* ── Header hints & edit icon ── */
+  .th-inner { display: flex; align-items: center; gap: 4px; }
+  .th-hint { font-size: 8px; color: var(--text-dim); flex-shrink: 0; }
+  .th-edit-icon {
+    font-size: 13px; color: var(--text-muted); cursor: pointer;
+    flex-shrink: 0; line-height: 1;
+  }
+  thead th.editing .th-edit-icon { color: var(--accent); }
+  .th-edit-icon:hover { color: var(--text); }
+  .th-date-input {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    background: var(--surface2);
+    border: 1px solid var(--accent);
+    color: var(--text);
+    border-radius: 4px;
+    padding: 2px 4px;
+    width: 88px;
+    outline: none;
+  }
+
+  td.today-cell {
+    padding: 4px 5px;
+    background: #131315;
+    border-right: 1px solid var(--border);
+  }
+
+  .input-group {
+    display: flex;
+    gap: 4px;
+    align-items: center;
+  }
+
+  .input-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .input-label {
+    font-size: 9px;
+    color: var(--text-dim);
+    font-family: 'Space Mono', monospace;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    padding-left: 2px;
+    white-space: nowrap;
+  }
+
+  .spinner {
+    position: relative;
+    height: var(--input-h);
+    width: 54px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+  }
+  .spinner.kg {
+    width: 58px;
+    background: var(--surface-weight);
+    border-color: var(--border-weight);
+  }
+  .spinner-val {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--text);
+    font-family: 'Space Mono', monospace;
+    font-size: 16px;
+    font-weight: 700;
+    text-align: center;
+    padding: 0;
+    width: 100%;
+    min-width: 0;
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+  .spinner-val::-webkit-outer-spin-button,
+  .spinner-val::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .spinner.kg .spinner-val { color: #b8e030; }
+  .spinner-btns {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    border-left: 1px solid var(--border);
+    flex-shrink: 0;
+    width: var(--chevron-w);
+  }
+  .spinner.kg .spinner-btns { border-color: var(--border-weight); }
+  .chev {
+    flex: 1;
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    line-height: 1;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+    font-size: 10px;
+  }
+  .chev:first-child { border-bottom: 1px solid var(--border); }
+  .spinner.kg .chev:first-child { border-color: var(--border-weight); }
+  .chev:active { background: rgba(255,255,255,0.07); color: var(--text); }
+  .spinner:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(200,241,53,0.15);
+  }
+
+  .opts-btn {
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 18px;
+    width: 30px;
+    height: var(--input-h);
+    border-radius: 6px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    -webkit-user-select: none;
+    user-select: none;
+    touch-action: manipulation;
+    letter-spacing: 0;
+    line-height: 0.4;
+    padding-bottom: 4px;
+  }
+  .opts-btn:active { border-color: var(--accent); color: var(--accent); }
+
+  .ctx-menu {
+    position: fixed;
+    background: #1e1e22;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 4px 0;
+    min-width: 200px;
+    z-index: 1000;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    display: none;
+  }
+  .ctx-menu.open { display: block; }
+  .ctx-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    display: none;
+  }
+  .ctx-backdrop.open { display: block; }
+  .ctx-item {
+    display: block;
+    width: 100%;
+    background: none;
+    border: none;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    padding: 11px 16px;
+    text-align: left;
+    cursor: pointer;
+    white-space: nowrap;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .ctx-item:active { background: rgba(255,255,255,0.06); }
+  .ctx-item.danger { color: var(--danger); }
+  .ctx-item.skip-item { color: var(--skip-color); }
+  .ctx-item.accent { color: var(--accent); }
+  .ctx-divider { height: 1px; background: var(--border); margin: 4px 0; }
+
+  .hamburger-menu {
+    position: fixed;
+    top: 0; right: 0;
+    height: 100%;
+    width: 240px;
+    background: #1a1a1d;
+    border-left: 1px solid var(--border);
+    z-index: 1001;
+    transform: translateX(100%);
+    transition: transform 0.22s ease;
+    display: flex;
+    flex-direction: column;
+    padding-top: 12px;
+  }
+  .hamburger-menu.open { transform: translateX(0); }
+  .hmenu-header {
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent);
+    padding: 10px 16px 14px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+  }
+
+  .prev-cell {
+    font-family: 'Space Mono', monospace;
+    white-space: nowrap;
+  }
+  .wg-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    padding-top: 0;
+  }
+  .wg {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 2px;
+    position: relative;
+  }
+  .wg-up {
+    position: absolute;
+    top: -10px;
+    left: 0;
+    font-size: 7px;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .wg-weight { font-size: 10px; color: var(--text); white-space: nowrap; }
+  .wg-sets { display: flex; flex-direction: row; gap: 4px; }
+  .wg-set { font-size: 9px; color: var(--text-muted); white-space: nowrap; }
+
+  .save-row td {
+    padding: 8px 5px 18px;
+    border-top: 1px solid var(--border);
+    background: #131315;
+  }
+  .save-row td.empty { background: var(--bg); border-top: 1px solid var(--border); }
+  .save-btn {
+    width: 100%;
+    background: var(--accent);
+    color: #0f0f10;
+    border: none;
+    border-radius: 7px;
+    padding: 13px 6px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    text-transform: uppercase;
+    touch-action: manipulation;
+  }
+  .save-btn:active { background: #d4f84a; }
+  .cancel-btn {
+    width: 100%;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 7px;
+    padding: 10px 6px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    text-transform: uppercase;
+    touch-action: manipulation;
+    margin-top: 6px;
+    display: block;
+  }
+  .cancel-btn:active { border-color: var(--text-muted); color: var(--text); }
+
+  thead th.editing {
+    color: var(--text-muted) !important;
+    background: #1c1c22;
+  }
+  td.editing-cell {
+    padding: 4px 5px;
+    background: #1c1c22;
+  }
+  thead th:not(:first-child):not(:nth-child(2)):not(.editing) { cursor: pointer; }
+  thead th:not(:first-child):not(:nth-child(2)):not(.editing):hover { color: var(--text-muted); }
+
+  /* Save/cancel side by side */
+  .edit-actions { display: flex; gap: 6px; }
+  .edit-actions .save-btn { flex: 1; }
+  .edit-actions .cancel-btn { flex: 1; margin-top: 0; display: block; }
+
+  /* Date edit popover */
+  .date-popover {
+    position: fixed;
+    background: #1e1e22;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    z-index: 1100;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    min-width: 180px;
+  }
+  .date-popover label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .date-popover input {
+    font-family: 'Space Mono', monospace;
+    font-size: 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 5px;
+    padding: 6px 8px;
+    outline: none;
+    width: 100%;
+  }
+  .date-popover input:focus { border-color: var(--accent); }
+  .date-popover .popover-actions { display: flex; gap: 6px; }
+  .date-popover .pop-ok {
+    flex: 1; background: var(--accent); color: #0f0f10; border: none;
+    border-radius: 5px; padding: 7px; font-family: 'Space Mono', monospace;
+    font-size: 10px; font-weight: 700; cursor: pointer; text-transform: uppercase;
+  }
+  .date-popover .pop-cancel {
+    flex: 1; background: none; border: 1px solid var(--border); color: var(--text-muted);
+    border-radius: 5px; padding: 7px; font-family: 'Space Mono', monospace;
+    font-size: 10px; font-weight: 700; cursor: pointer; text-transform: uppercase;
+  }
+
+  /* ── Header export prompt ── */
+  .header-export-prompt {
+    display: none;
+    align-items: center;
+    gap: 8px;
+    animation: fadeIn 0.2s ease;
+  }
+  .header-export-prompt.visible { display: flex; }
+  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+  .hep-text {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+  .hep-btn {
+    background: var(--accent);
+    color: #0f0f10;
+    border: none;
+    border-radius: 5px;
+    padding: 5px 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    text-transform: uppercase;
+    touch-action: manipulation;
+    white-space: nowrap;
+  }
+  .hep-dismiss {
+    background: none;
+    border: none;
+    color: var(--text-dim);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+  }
+
+  /* ── Sticky bottom button ── */
+  .sticky-bottom {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    padding: 12px 16px 20px;
+    background: linear-gradient(to top, var(--bg) 70%, transparent);
+    z-index: 100;
+  }
+  .new-session-btn {
+    width: 100%;
+    background: var(--accent);
+    color: #0f0f10;
+    border: none;
+    border-radius: 8px;
+    padding: 15px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    text-transform: uppercase;
+    touch-action: manipulation;
+  }
+  .new-session-btn:active { background: #d4f84a; }
+
+
+  /* ── Bottom padding so table isn't hidden by sticky btn ── */
+  .table-scroll { padding-bottom: 80px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">LIFT LOG</div>
+  <div class="header-export-prompt" id="headerExportPrompt">
+    <span class="hep-text">Back up?</span>
+    <button class="hep-btn" id="hepExportBtn">Export CSV</button>
+    <button class="hep-dismiss" id="hepDismiss">&#x2715;</button>
+  </div>
+  <button class="hamburger" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+</header>
+
+<div class="ctx-backdrop" id="ctxBackdrop"></div>
+<div class="ctx-menu" id="ctxMenu"></div>
+
+<div class="ctx-backdrop" id="dateCtxBackdrop"></div>
+<div class="ctx-menu" id="dateCtxMenu"></div>
+
+<div class="ctx-backdrop" id="hamburgerBackdrop"></div>
+<div class="hamburger-menu" id="hamburgerMenu">
+  <div class="hmenu-header">LIFT LOG</div>
+  <button class="ctx-item accent" id="menuExportCSV">&#x2193;&#160;&#160;Export CSV</button>
+  <button class="ctx-item" id="menuImportCSV">&#x2191;&#160;&#160;Import CSV</button>
+</div>
+<input type="file" id="csvImportInput" accept=".csv" style="display:none">
+
+<div class="table-scroll">
+  <table id="mainTable">
+    <thead><tr id="headerRow"></tr></thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<div id="emptyState" style="display:none; text-align:center; padding:48px 24px 120px;">
+  <div style="font-family:'Space Mono',monospace; font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">No sessions yet</div>
+  <div style="font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text-muted);">Import a CSV or tap <strong style="color:var(--text)">+ New Session</strong> to get started.</div>
+</div>
+
+
+<div class="sticky-bottom" id="stickyBottom">
+  <button class="new-session-btn" id="newSessionBtn">+ New Session</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// PERSISTENCE — localStorage
+// ═══════════════════════════════════════════════════════════════
+const LS_SESSIONS = 'liftlog_sessions';
+const LS_MACHINES = 'liftlog_machines';
+
+// Load from localStorage — empty arrays if nothing saved yet
+let sessions = JSON.parse(localStorage.getItem(LS_SESSIONS) || 'null') || [];
+let MACHINES  = JSON.parse(localStorage.getItem(LS_MACHINES) || 'null') || [];
+
+function savePersisted() {
+  localStorage.setItem(LS_SESSIONS, JSON.stringify(sessions));
+  localStorage.setItem(LS_MACHINES, JSON.stringify(MACHINES));
+}
+// ═══════════════════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════════════════
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+// Today's date string YYYY-MM-DD
+function todayStr() {
+  const t = new Date();
+  return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DATA HELPERS
+// ═══════════════════════════════════════════════════════════════
+function getDates() {
+  return [...new Set(sessions.map(r => r.date))].sort().reverse();
+}
+function getSets(date, machine) {
+  return sessions.filter(r => r.date === date && r.machine === machine).sort((a,b) => a.set - b.set);
+}
+function groupByWeight(sets) {
+  const groups = [];
+  for (const s of sets) {
+    const last = groups[groups.length - 1];
+    if (last && last.weight === s.weight) last.reps.push(s.reps);
+    else groups.push({ weight: s.weight, reps: [s.reps] });
+  }
+  return groups;
+}
+function maxWeight(date, machine) {
+  const sets = getSets(date, machine);
+  return sets.length ? Math.max(...sets.map(s => s.weight)) : null;
+}
+function prevDate(date, machine) {
+  const dates = getDates();
+  const idx = dates.indexOf(date);
+  for (let i = idx + 1; i < dates.length; i++) {
+    if (getSets(dates[i], machine).length > 0) return dates[i];
+  }
+  return null;
+}
+function fmtW(w) { return w === Math.floor(w) ? String(Math.floor(w)) : String(w); }
+function fmtDate(d) {
+  const [,m,day] = d.split('-');
+  return `${parseInt(day)} ${MONTHS[parseInt(m)-1]}`;
+}
+function lastSets(machine) {
+  for (const d of getDates()) {
+    const s = getSets(d, machine);
+    if (s.length) return s;
+  }
+  return [];
+}
+function isValidDate(s) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) && !isNaN(new Date(s).getTime());
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DOM BUILDERS
+// ═══════════════════════════════════════════════════════════════
+function spinHTML(val, isKg) {
+  const cls = isKg ? ' kg' : '';
+  return `<div class="spinner${cls}"><input class="spinner-val" type="number" value="${val}"><div class="spinner-btns"><button class="chev up">&#8963;</button><button class="chev dn">&#8964;</button></div></div>`;
+}
+
+function buildPrevCellHTML(date, machine) {
+  const sets = getSets(date, machine);
+  if (!sets.length) return '';
+  const groups = groupByWeight(sets);
+  const curMax = Math.max(...groups.map(g => g.weight));
+  const prev = prevDate(date, machine);
+  const prevMax = prev ? maxWeight(prev, machine) : null;
+  const showUp = prevMax !== null && curMax > prevMax;
+  const maxIdx = groups.reduce((mi, g, i) => g.weight > groups[mi].weight ? i : mi, 0);
+  let html = '<div class="wg-row">';
+  groups.forEach((g, i) => {
+    const kg = i === groups.length - 1 ? 'kg' : '';
+    const arrow = (showUp && i === maxIdx) ? '<div class="wg-up">▲</div>' : '';
+    const setsHtml = g.reps.map(r => `<div class="wg-set">${r}</div>`).join('');
+    html += `<div class="wg">${arrow}<div class="wg-weight">${fmtW(g.weight)}${kg}</div><div class="wg-sets">${setsHtml}</div></div>`;
+  });
+  return html + '</div>';
+}
+
+function buildTodayCellHTML(machine) {
+  const sets = lastSets(machine);
+  const groups = sets.length ? groupByWeight(sets) : [{weight: 0, reps: [0]}];
+  const isCustom = groups.length > 1;
+  let html = '<div class="input-group">';
+  if (!isCustom) {
+    html += `<div class="input-cell kg-cell"><div class="input-label">kg</div>${spinHTML(fmtW(groups[0].weight), true)}</div>`;
+    groups[0].reps.forEach((r, i) => {
+      html += `<div class="input-cell set-cell"><div class="input-label">Set ${i+1}</div>${spinHTML(r, false)}</div>`;
+    });
+  } else {
+    html += `<div class="input-cell kg-cell shared-kg" style="display:none"><div class="input-label">kg</div>${spinHTML(fmtW(groups[0].weight), true)}</div>`;
+    let n = 1;
+    groups.forEach(g => g.reps.forEach(r => {
+      html += `<div class="input-cell kg-cell"><div class="input-label">kg</div>${spinHTML(fmtW(g.weight), true)}</div>`;
+      html += `<div class="input-cell set-cell"><div class="input-label">Set ${n++}</div>${spinHTML(r, false)}</div>`;
+    }));
+  }
+  return html + '<button class="opts-btn">&#8943;</button></div>';
+}
+
+function buildInputGroupFromGroups(groups) {
+  const isCustom = groups.length > 1;
+  let html = '<div class="input-group">';
+  if (!isCustom) {
+    const g = groups[0] || {weight:0, reps:[0]};
+    html += `<div class="input-cell kg-cell"><div class="input-label">kg</div>${spinHTML(fmtW(g.weight), true)}</div>`;
+    g.reps.forEach((r,i) => { html += `<div class="input-cell set-cell"><div class="input-label">Set ${i+1}</div>${spinHTML(r, false)}</div>`; });
+  } else {
+    html += `<div class="input-cell kg-cell shared-kg" style="display:none"><div class="input-label">kg</div>${spinHTML(fmtW(groups[0].weight), true)}</div>`;
+    let n = 1;
+    groups.forEach(g => g.reps.forEach(r => {
+      html += `<div class="input-cell kg-cell"><div class="input-label">kg</div>${spinHTML(fmtW(g.weight), true)}</div>`;
+      html += `<div class="input-cell set-cell"><div class="input-label">Set ${n++}</div>${spinHTML(r, false)}</div>`;
+    }));
+  }
+  return html + '<button class="opts-btn">&#8943;</button></div>';
+}
+
+// Build a th inner with label + hint/icon
+function buildThInner(label, mode) {
+  // mode: 'edit' | 'read'
+  const hint = mode === 'read' ? '<span class="th-hint">▾</span>' : '';
+  const icon = mode === 'edit' ? '<span class="th-edit-icon" title="Edit date">✎</span>' : '';
+  return `<div class="th-inner"><span class="th-label">${label}</span>${hint}${icon}</div>`;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// RENDER — full table build on boot / import
+// ═══════════════════════════════════════════════════════════════
+function render() {
+  const dates = getDates();
+
+  // Header — just machine col + past dates
+  const headerRow = document.getElementById('headerRow');
+  headerRow.innerHTML = '<th></th>';
+  dates.forEach((d, i) => {
+    const th = document.createElement('th');
+    if (i === 0) th.className = 'date-latest';
+    th.innerHTML = buildThInner(fmtDate(d), 'read');
+    th.dataset.date = d;
+    headerRow.appendChild(th);
+  });
+
+  // Body — machine rows with only prev-cells
+  const tbody = document.getElementById('tableBody');
+  tbody.innerHTML = '';
+  MACHINES.forEach(machine => {
+    const tr = document.createElement('tr');
+    tr.dataset.exercise = machine;
+    tr.innerHTML = `<td><div class="machine-name">${machine}</div></td>`;
+    dates.forEach(d => {
+      const td = document.createElement('td');
+      td.className = 'prev-cell';
+      td.dataset.date = d;
+      td.innerHTML = buildPrevCellHTML(d, machine);
+      tr.appendChild(td);
+    });
+    tbody.appendChild(tr);
+  });
+
+  // Save row — empty col + one empty td per date (for edit mode injection)
+  const saveRow = document.createElement('tr');
+  saveRow.className = 'save-row';
+  saveRow.appendChild(Object.assign(document.createElement('td'), {className: 'empty'}));
+  dates.forEach(d => {
+    const td = document.createElement('td');
+    td.className = 'empty';
+    td.dataset.date = d;
+    saveRow.appendChild(td);
+  });
+  tbody.appendChild(saveRow);
+
+  wireHeaderClicks();
+  showNewSessionBtn();
+
+  // Show empty state if no sessions
+  const emptyState = document.getElementById('emptyState');
+  if (emptyState) emptyState.style.display = sessions.length ? 'none' : 'block';
+}
+
+// ═══════════════════════════════════════════════════════════════
+// TARGETED COLUMN UPDATE
+// ═══════════════════════════════════════════════════════════════
+function renderColumn(date) {
+  document.querySelectorAll(`td.prev-cell[data-date="${date}"]`).forEach(td => {
+    const machine = td.closest('tr').dataset.exercise;
+    td.innerHTML = buildPrevCellHTML(date, machine);
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// SPINNER WIRING — integers only; snap to nearest int first
+// ═══════════════════════════════════════════════════════════════
+function wireSpinner(spinner) {
+  const input = spinner.querySelector('.spinner-val');
+  spinner.querySelector('.chev.up').addEventListener('click', () => {
+    const v = parseFloat(input.value) || 0;
+    // Snap to ceiling integer, then add 1 only if already integer
+    const snapped = Number.isInteger(v) ? v + 1 : Math.ceil(v);
+    input.value = snapped;
+  });
+  spinner.querySelector('.chev.dn').addEventListener('click', () => {
+    const v = parseFloat(input.value) || 0;
+    const snapped = Number.isInteger(v) ? v - 1 : Math.floor(v);
+    if (snapped >= 0) input.value = snapped;
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// READ INPUTS FROM DOM
+// ═══════════════════════════════════════════════════════════════
+function readGroupFromInputGroup(group, tr) {
+  const custom = tr.dataset.customWeights === 'true';
+  const rows = [];
+  if (custom) {
+    const setCells = Array.from(group.querySelectorAll('.input-cell.set-cell'));
+    setCells.forEach((setCell, i) => {
+      const allCells = Array.from(group.querySelectorAll('.input-cell'));
+      const setIdx = allCells.indexOf(setCell);
+      let weight = 0;
+      for (let j = setIdx-1; j >= 0; j--) {
+        if (allCells[j].classList.contains('kg-cell') && !allCells[j].classList.contains('shared-kg')) {
+          weight = parseFloat(allCells[j].querySelector('.spinner-val').value); break;
+        }
+      }
+      rows.push({ set: i+1, weight, reps: parseInt(setCell.querySelector('.spinner-val').value) });
+    });
+  } else {
+    const weight = parseFloat(group.querySelector('.kg-cell .spinner-val').value);
+    group.querySelectorAll('.input-cell.set-cell').forEach((c, i) => {
+      rows.push({ set: i+1, weight, reps: parseInt(c.querySelector('.spinner-val').value) });
+    });
+  }
+  return rows;
+}
+
+function readTodayInputs() {
+  const date = todayStr();
+  const rows = [];
+  document.querySelectorAll('tbody tr[data-exercise]').forEach(tr => {
+    const machine = tr.dataset.exercise;
+    const group = tr.querySelector('.editing-cell .input-group, .today-cell .input-group');
+    if (!group || isCellSkipped(group)) return;
+    readGroupFromInputGroup(group, tr).forEach(r => rows.push({date, machine, ...r}));
+  });
+  return { date, rows };
+}
+
+function readEditingInputs(date) {
+  const rows = [];
+  document.querySelectorAll('tbody tr[data-exercise]').forEach(tr => {
+    const machine = tr.dataset.exercise;
+    const editCell = tr.querySelector('.editing-cell');
+    if (!editCell) return;
+    const group = editCell.querySelector('.input-group');
+    if (!group || isCellSkipped(group)) return;
+    readGroupFromInputGroup(group, tr).forEach(r => rows.push({date, machine, ...r}));
+  });
+  return rows;
+}
+
+// ═══════════════════════════════════════════════════════════════
+// NEW SESSION / LOG SESSION
+// ═══════════════════════════════════════════════════════════════
+function showNewSessionBtn() {
+  const sb = document.getElementById('stickyBottom');
+  sb.style.display = '';
+  sb.innerHTML = '<button class="new-session-btn" id="newSessionBtn">+ New Session</button>';
+  document.getElementById('newSessionBtn').addEventListener('click', startNewSession);
+}
+
+function startNewSession() {
+  const date = todayStr();
+
+  // Hide sticky button
+  document.getElementById('stickyBottom').style.display = 'none';
+  const emptyState = document.getElementById('emptyState');
+  if (emptyState) emptyState.style.display = 'none';
+
+  // Insert header col at front (after machine col)
+  const headerRow = document.getElementById('headerRow');
+  const newTh = document.createElement('th');
+  newTh.classList.add('editing');
+  newTh.innerHTML = buildThInner(fmtDate(date), 'edit');
+  newTh.dataset.date = date;
+  headerRow.children[0].after(newTh);
+  rewireThIcon(newTh);
+
+  // Insert editing-cell for each machine
+  document.querySelectorAll('tbody tr[data-exercise]').forEach(tr => {
+    const machine = tr.dataset.exercise;
+    const ls = lastSets(machine);
+    const isCustom = ls.length > 0 && groupByWeight(ls).length > 1;
+    tr.dataset.customWeights = isCustom ? 'true' : 'false';
+    const editTd = document.createElement('td');
+    editTd.className = 'editing-cell';
+    editTd.dataset.date = date;
+    const groups = ls.length ? groupByWeight(ls) : [{weight: 0, reps: [20]}];
+    editTd.innerHTML = buildInputGroupFromGroups(groups);
+    tr.children[0].after(editTd);
+    editTd.querySelectorAll('.spinner').forEach(wireSpinner);
+  });
+
+  // Insert save-row cell with Save + Cancel buttons
+  const saveRow = document.querySelector('.save-row');
+  const saveTd = document.createElement('td');
+  saveTd.className = 'empty';
+  saveTd.dataset.date = date;
+  saveTd.style.cssText = 'padding:8px 5px 18px; border-top:1px solid var(--border); background:#1c1c22;';
+  const actions = document.createElement('div');
+  actions.className = 'edit-actions';
+  const sBtn = document.createElement('button');
+  sBtn.className = 'save-btn';
+  sBtn.textContent = 'Save';
+  sBtn.addEventListener('click', () => logSession(date));
+  const cBtn = document.createElement('button');
+  cBtn.className = 'cancel-btn';
+  cBtn.textContent = 'Cancel';
+  cBtn.addEventListener('click', () => cancelNewSession(date));
+  actions.appendChild(sBtn);
+  actions.appendChild(cBtn);
+  saveTd.appendChild(actions);
+  saveRow.children[0].after(saveTd);
+
+  editOriginalsMap[date] = null;
+
+  // Scroll table to left so new column is visible
+  requestAnimationFrame(() => {
+    const scroll = document.querySelector('.table-scroll');
+    if (scroll) scroll.scrollLeft = 0;
+  });
+}
+
+function logSession(date) {
+  const rows = readEditingInputs(date);
+
+  for (let i = sessions.length-1; i >= 0; i--) {
+    if (sessions[i].date === date) sessions.splice(i, 1);
+  }
+  rows.forEach(r => sessions.push(r));
+  savePersisted();
+
+  // Switch editing-cells to prev-cells and render
+  document.querySelectorAll(`.editing-cell[data-date="${date}"]`).forEach(td => {
+    td.className = 'prev-cell';
+  });
+  renderColumn(date);
+
+  // Restore save-row cell
+  const saveTd = document.querySelector(`.save-row td[data-date="${date}"]`);
+  if (saveTd) { saveTd.innerHTML = ''; saveTd.removeAttribute('style'); }
+
+  // Switch header to read mode
+  const th = document.querySelector(`thead th[data-date="${date}"]`);
+  if (th) {
+    th.classList.remove('editing');
+    th.classList.add('date-latest');
+    document.querySelectorAll('thead th.date-latest').forEach(t => { if (t !== th) t.classList.remove('date-latest'); });
+    th.innerHTML = buildThInner(fmtDate(date), 'read');
+    wireHeaderClicks();
+  }
+
+  delete editOriginalsMap[date];
+  closePopover();
+  showNewSessionBtn();
+  showExportPrompt();
+}
+
+function cancelNewSession(date) {
+  // Remove editing col entirely
+  document.querySelectorAll(`.editing-cell[data-date="${date}"]`).forEach(td => td.remove());
+  const th = document.querySelector(`thead th[data-date="${date}"]`);
+  if (th) th.remove();
+  const saveTd = document.querySelector(`.save-row td[data-date="${date}"]`);
+  if (saveTd) saveTd.remove();
+  delete editOriginalsMap[date];
+  closePopover();
+  showNewSessionBtn();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// HEADER CLICKS — date edit icon + read-mode dropdown
+// ═══════════════════════════════════════════════════════════════
+function wireHeaderClicks() {
+  // Edit icon on Today th and editing-mode ths
+  document.querySelectorAll('thead th .th-edit-icon').forEach(icon => {
+    // Remove old listener by replacing node
+    const fresh = icon.cloneNode(true);
+    icon.replaceWith(fresh);
+    fresh.addEventListener('click', e => {
+      e.stopPropagation();
+      const th = fresh.closest('th');
+      showDatePopover(th);
+    });
+  });
+}
+
+function showDatePopover(th) {
+  closePopover();
+  const currentDate = th.dataset.date;
+  const popover = document.createElement('div');
+  popover.className = 'date-popover';
+  popover.innerHTML = `
+    <label>Session date</label>
+    <input type="text" value="${currentDate}" maxlength="10" placeholder="YYYY-MM-DD">
+    <div class="popover-actions">
+      <button class="pop-cancel">Cancel</button>
+      <button class="pop-ok">OK</button>
+    </div>`;
+  document.body.appendChild(popover);
+  activePopover = popover;
+
+  const rect = th.getBoundingClientRect();
+  let top = rect.bottom + 6;
+  let left = rect.left;
+  if (left + 180 > window.innerWidth - 8) left = window.innerWidth - 188;
+  popover.style.top = top + 'px';
+  popover.style.left = left + 'px';
+
+  const input = popover.querySelector('input');
+  input.focus(); input.select();
+
+  const commit = () => {
+    const val = input.value.trim();
+    if (isValidDate(val) && val !== currentDate) {
+      sessions.forEach(r => { if (r.date === currentDate) r.date = val; });
+      document.querySelectorAll(`[data-date="${currentDate}"]`).forEach(el => el.dataset.date = val);
+      th.dataset.date = val;
+      const isEditing = th.classList.contains('editing');
+      const isToday = val === todayStr();
+      const mode = isEditing ? 'edit' : isToday ? 'today-edit' : 'read';
+      th.innerHTML = buildThInner(fmtDate(val), mode);
+      rewireThIcon(th);
+    }
+    closePopover();
+  };
+
+  popover.querySelector('.pop-ok').addEventListener('click', commit);
+  popover.querySelector('.pop-cancel').addEventListener('click', closePopover);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') closePopover();
+  });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXERCISE CONTEXT MENU (⋯ button)
+// ═══════════════════════════════════════════════════════════════
+const menu = document.getElementById('ctxMenu');
+const backdrop = document.getElementById('ctxBackdrop');
+let activeRow = null;
+
+function closeMenu() { menu.classList.remove('open'); backdrop.classList.remove('open'); activeRow = null; }
+backdrop.addEventListener('click', closeMenu);
+
+function mkDiv(cls) { const d = document.createElement('div'); d.className = cls; return d; }
+
+function makeSpinnerCell(label, value, isKg) {
+  const cell = document.createElement('div');
+  cell.className = 'input-cell' + (isKg ? ' kg-cell' : ' set-cell');
+  cell.innerHTML = `<div class="input-label">${label}</div>${spinHTML(value, isKg)}`;
+  wireSpinner(cell.querySelector('.spinner'));
+  return cell;
+}
+
+function getSetCells(group) { return Array.from(group.querySelectorAll('.input-cell.set-cell')); }
+function renumberSets(group) { getSetCells(group).forEach((c,i) => c.querySelector('.input-label').textContent = `Set ${i+1}`); }
+function isCustomWeights(row) { return row.dataset.customWeights === 'true'; }
+
+// Auto-switch to consistent weights when only 1 set remains
+function checkAutoConsistentWeights(row, group) {
+  const sets = getSetCells(group);
+  if (sets.length <= 1 && isCustomWeights(row)) {
+    // Collapse: take first per-set kg value, restore shared kg, remove per-set kgs
+    const firstPerSet = group.querySelector('.kg-cell:not(.shared-kg) .spinner-val');
+    group.querySelectorAll('.kg-cell').forEach(c => {
+      if (c.classList.contains('shared-kg')) {
+        if (firstPerSet) c.querySelector('.spinner-val').value = firstPerSet.value;
+        c.style.display = '';
+        c.classList.remove('shared-kg');
+      } else { c.remove(); }
+    });
+    row.dataset.customWeights = 'false';
+  }
+}
+
+function isCellSkipped(group) {
+  return group.querySelector('.skipped-cell') !== null;
+}
+
+function skipCell(group, row, machine) {
+  const optsBtn = group.querySelector('.opts-btn');
+  // Remove everything except opts-btn
+  Array.from(group.children).forEach(c => { if (c !== optsBtn) c.remove(); });
+  // Insert skipped notice + unskip button before opts-btn
+  const notice = document.createElement('div');
+  notice.className = 'skipped-cell';
+  notice.innerHTML = `<span class="skipped-label">Skipped</span><button class="unskip-btn">Unskip</button>`;
+  notice.querySelector('.unskip-btn').addEventListener('click', () => unskipCell(group, row, machine));
+  group.insertBefore(notice, optsBtn);
+  // Hide opts-btn while skipped
+  optsBtn.style.display = 'none';
+}
+
+function unskipCell(group, row, machine) {
+  // Remove skipped notice
+  group.querySelector('.skipped-cell')?.remove();
+  // Show opts-btn
+  const optsBtn = group.querySelector('.opts-btn');
+  if (optsBtn) optsBtn.style.display = '';
+  // Repopulate from last known data for this machine
+  const prior = lastSets(machine);
+  const groups = prior.length ? groupByWeight(prior) : [{weight: 0, reps: [20]}];
+  const isCustom = groups.length > 1;
+  if (!isCustom) {
+    group.insertBefore(makeSpinnerCell('kg', fmtW(groups[0].weight), true), optsBtn);
+    groups[0].reps.forEach((r, i) => group.insertBefore(makeSpinnerCell(`Set ${i+1}`, r, false), optsBtn));
+    row.dataset.customWeights = 'false';
+  } else {
+    const sharedCell = makeSpinnerCell('kg', fmtW(groups[0].weight), true);
+    sharedCell.classList.add('shared-kg');
+    sharedCell.style.display = 'none';
+    group.insertBefore(sharedCell, optsBtn);
+    let n = 1;
+    groups.forEach(g => g.reps.forEach(r => {
+      group.insertBefore(makeSpinnerCell('kg', fmtW(g.weight), true), optsBtn);
+      group.insertBefore(makeSpinnerCell(`Set ${n++}`, r, false), optsBtn);
+    }));
+    row.dataset.customWeights = 'true';
+  }
+}
+
+function buildExerciseMenu(row, sourceCell) {
+  const group = (sourceCell || row).querySelector('.input-group');
+  const sets = getSetCells(group);
+  const custom = isCustomWeights(row);
+  const skipped = isCellSkipped(group);
+  menu.innerHTML = '';
+
+  // Add set — default reps to last set's reps, or 20
+  const addBtn = document.createElement('button');
+  addBtn.className = 'ctx-item accent';
+  addBtn.textContent = '＋  Add set';
+  addBtn.addEventListener('click', () => {
+    const optsBtn = group.querySelector('.opts-btn');
+    const lastSetInput = sets.length ? sets[sets.length-1].querySelector('.spinner-val') : null;
+    const defaultReps = lastSetInput ? parseInt(lastSetInput.value) || 20 : 20;
+    if (custom) {
+      const kgVal = group.querySelector('.kg-cell:not(.shared-kg) .spinner-val')?.value || '0';
+      group.insertBefore(makeSpinnerCell('kg', kgVal, true), optsBtn);
+    }
+    group.insertBefore(makeSpinnerCell(`Set ${getSetCells(group).length + 1}`, defaultReps, false), optsBtn);
+    closeMenu();
+  });
+  menu.appendChild(addBtn);
+
+  // Remove sets
+  if (sets.length > 0) {
+    menu.appendChild(mkDiv('ctx-divider'));
+    sets.forEach((setCell, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'ctx-item danger';
+      btn.textContent = `✕  Remove Set ${i+1}`;
+      btn.addEventListener('click', () => {
+        if (custom) {
+          const allCells = Array.from(group.querySelectorAll('.input-cell'));
+          const idx = allCells.indexOf(setCell);
+          if (idx > 0 && allCells[idx-1].classList.contains('kg-cell') && !allCells[idx-1].classList.contains('shared-kg'))
+            allCells[idx-1].remove();
+        }
+        setCell.remove();
+        renumberSets(group);
+        checkAutoConsistentWeights(row, group);
+        closeMenu();
+      });
+      menu.appendChild(btn);
+    });
+  }
+
+  // Skip / unskip — same behaviour for both today and edit columns
+  menu.appendChild(mkDiv('ctx-divider'));
+  const skipBtn = document.createElement('button');
+  skipBtn.className = 'ctx-item skip-item';
+  skipBtn.textContent = skipped ? '↩  Unskip exercise' : '⊘  Skip exercise';
+  skipBtn.addEventListener('click', () => {
+    const machine = row.dataset.exercise;
+    if (skipped) {
+      unskipCell(group, row, machine);
+    } else {
+      skipCell(group, row, machine);
+    }
+    closeMenu();
+  });
+  menu.appendChild(skipBtn);
+
+  // Custom / consistent weights — greyed out if only 1 set
+  menu.appendChild(mkDiv('ctx-divider'));
+  const weightBtn = document.createElement('button');
+  weightBtn.className = 'ctx-item';
+  const onlyOneSet = sets.length <= 1;
+  if (custom) {
+    weightBtn.textContent = '⚖  Consistent weight';
+  } else {
+    weightBtn.textContent = '⚖  Custom weights per set';
+    if (onlyOneSet) {
+      weightBtn.style.opacity = '0.35';
+      weightBtn.style.pointerEvents = 'none';
+    }
+  }
+  weightBtn.addEventListener('click', () => {
+    if (onlyOneSet && !custom) return;
+    const currentSets = getSetCells(group);
+    const sharedVal = group.querySelector('.kg-cell .spinner-val')?.value || '0';
+    if (!custom) {
+      const sharedCell = group.querySelector('.kg-cell');
+      sharedCell.style.display = 'none';
+      sharedCell.classList.add('shared-kg');
+      currentSets.forEach(s => group.insertBefore(makeSpinnerCell('kg', sharedVal, true), s));
+      row.dataset.customWeights = 'true';
+    } else {
+      const firstPerSet = group.querySelector('.kg-cell:not(.shared-kg) .spinner-val');
+      group.querySelectorAll('.kg-cell').forEach(c => {
+        if (c.classList.contains('shared-kg')) {
+          if (firstPerSet) c.querySelector('.spinner-val').value = firstPerSet.value;
+          c.style.display = ''; c.classList.remove('shared-kg');
+        } else { c.remove(); }
+      });
+      row.dataset.customWeights = 'false';
+    }
+    closeMenu();
+  });
+  menu.appendChild(weightBtn);
+}
+
+function positionMenu(el, anchor, w, h) {
+  const rect = anchor.getBoundingClientRect();
+  let top = rect.bottom + 6, left = rect.right - w;
+  if (left < 8) left = 8;
+  if (top + h > window.innerHeight - 8) top = rect.top - h - 6;
+  el.style.top = top + 'px'; el.style.left = left + 'px';
+}
+
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.opts-btn');
+  if (!btn) return;
+  const row = btn.closest('tr');
+  // Find the cell containing this opts-btn
+  const sourceCell = btn.closest('td');
+  if (activeRow === row && menu.classList.contains('open')) { closeMenu(); return; }
+  activeRow = row;
+  buildExerciseMenu(row, sourceCell);
+  positionMenu(menu, btn, 220, 320);
+  menu.classList.add('open');
+  backdrop.classList.add('open');
+});
+
+// ═══════════════════════════════════════════════════════════════
+// DATE HEADER DROPDOWN (read mode)
+// ═══════════════════════════════════════════════════════════════
+const dateMenu = document.getElementById('dateCtxMenu');
+const dateBackdrop = document.getElementById('dateCtxBackdrop');
+
+function closeDateMenu() { dateMenu.classList.remove('open'); dateBackdrop.classList.remove('open'); }
+dateBackdrop.addEventListener('click', closeDateMenu);
+
+document.getElementById('headerRow').addEventListener('click', e => {
+  // Ignore clicks on the edit icon (handled separately) or date input
+  if (e.target.closest('.th-edit-icon') || e.target.closest('.date-popover')) return;
+
+  const th = e.target.closest('th[data-date]');
+  if (!th) return;
+
+  // No dropdown while this column is in edit mode
+  if (th.classList.contains('editing')) return;
+
+  if (dateMenu.classList.contains('open')) { closeDateMenu(); return; }
+
+  const date = th.dataset.date;
+  dateMenu.innerHTML = '';
+
+  const editBtn = document.createElement('button');
+  editBtn.className = 'ctx-item accent';
+  editBtn.textContent = '✎  Edit session';
+  editBtn.addEventListener('click', () => { closeDateMenu(); enterEditMode(date, th); });
+  dateMenu.appendChild(editBtn);
+
+  dateMenu.appendChild(mkDiv('ctx-divider'));
+
+  const delBtn = document.createElement('button');
+  delBtn.className = 'ctx-item danger';
+  delBtn.textContent = '✕  Delete session';
+  delBtn.addEventListener('click', () => {
+    closeDateMenu();
+    if (!confirm(`Delete session "${fmtDate(date)}"? This cannot be undone.`)) return;
+    deleteSession(date, th);
+  });
+  dateMenu.appendChild(delBtn);
+
+  positionMenu(dateMenu, th, 190, 110);
+  dateMenu.classList.add('open');
+  dateBackdrop.classList.add('open');
+});
+
+// ═══════════════════════════════════════════════════════════════
+// DATE EDIT POPOVER
+// ═══════════════════════════════════════════════════════════════
+let activePopover = null;
+
+function showDatePopover(th) {
+  closePopover();
+  const currentDate = th.dataset.date;
+  const popover = document.createElement('div');
+  popover.className = 'date-popover';
+  popover.innerHTML = `
+    <label>Session date</label>
+    <input type="text" value="${currentDate}" maxlength="10" placeholder="YYYY-MM-DD">
+    <div class="popover-actions">
+      <button class="pop-cancel">Cancel</button>
+      <button class="pop-ok">OK</button>
+    </div>`;
+  document.body.appendChild(popover);
+  activePopover = popover;
+
+  // Position below the th
+  const rect = th.getBoundingClientRect();
+  let top = rect.bottom + 6;
+  let left = rect.left;
+  if (left + 180 > window.innerWidth - 8) left = window.innerWidth - 188;
+  popover.style.top = top + 'px';
+  popover.style.left = left + 'px';
+
+  const input = popover.querySelector('input');
+  input.focus(); input.select();
+
+  const commit = () => {
+    const val = input.value.trim();
+    if (isValidDate(val) && val !== currentDate) {
+      // Rename date in sessions data
+      sessions.forEach(r => { if (r.date === currentDate) r.date = val; });
+      // Update all data-date attributes
+      document.querySelectorAll(`[data-date="${currentDate}"]`).forEach(el => el.dataset.date = val);
+      th.dataset.date = val;
+      // Update th label
+      const isEditing = th.classList.contains('editing');
+      th.innerHTML = buildThInner(fmtDate(val), isEditing ? 'edit' : 'read');
+      rewireThIcon(th);
+    }
+    closePopover();
+  };
+
+  popover.querySelector('.pop-ok').addEventListener('click', commit);
+  popover.querySelector('.pop-cancel').addEventListener('click', closePopover);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') closePopover();
+  });
+}
+
+function closePopover() {
+  if (activePopover) { activePopover.remove(); activePopover = null; }
+}
+
+// Close popover on outside click
+document.addEventListener('click', e => {
+  if (activePopover && !activePopover.contains(e.target) && !e.target.closest('.th-edit-icon')) {
+    closePopover();
+  }
+}, true);
+
+function rewireThIcon(th) {
+  const icon = th.querySelector('.th-edit-icon');
+  if (icon) icon.addEventListener('click', e => { e.stopPropagation(); showDatePopover(th); });
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EDIT MODE — per-column, independent
+// ═══════════════════════════════════════════════════════════════
+// editOriginals is keyed by date so multiple columns can be open simultaneously
+const editOriginalsMap = {}; // date -> { machine -> outerHTML }
+
+function anyEditing() {
+  return document.querySelector('thead th.editing') !== null;
+}
+
+function syncStickyBtn() {
+  const sb = document.getElementById('stickyBottom');
+  if (anyEditing()) {
+    sb.style.display = 'none';
+  } else {
+    sb.style.display = '';
+  }
+}
+
+function enterEditMode(date, th) {
+  th.classList.add('editing');
+  th.innerHTML = buildThInner(fmtDate(date), 'edit');
+  rewireThIcon(th);
+  editOriginalsMap[date] = {};
+  syncStickyBtn();
+
+  document.querySelectorAll('tbody tr[data-exercise]').forEach(tr => {
+    const machine = tr.dataset.exercise;
+    const td = tr.querySelector(`td.prev-cell[data-date="${date}"]`);
+    if (!td) return;
+    editOriginalsMap[date][machine] = td.outerHTML;
+    const sets = getSets(date, machine);
+    const editTd = document.createElement('td');
+    editTd.className = 'editing-cell';
+    editTd.dataset.date = date;
+    if (!sets.length) {
+      // No data for this exercise on this date — show as skipped
+      editTd.innerHTML = buildInputGroupFromGroups([{weight:0, reps:[0]}]);
+      td.replaceWith(editTd);
+      editTd.querySelectorAll('.spinner').forEach(wireSpinner);
+      const group = editTd.querySelector('.input-group');
+      skipCell(group, tr, machine);
+    } else {
+      const groups = groupByWeight(sets);
+      if (groups.length > 1) tr.dataset.customWeights = 'true';
+      editTd.innerHTML = buildInputGroupFromGroups(groups);
+      td.replaceWith(editTd);
+      editTd.querySelectorAll('.spinner').forEach(wireSpinner);
+    }
+  });
+
+  // Save-row: find cell by data-date
+  const saveTd = document.querySelector(`.save-row td[data-date="${date}"]`);
+  if (saveTd) {
+    saveTd._origHTML = saveTd.innerHTML;
+    saveTd._origStyle = saveTd.getAttribute('style') || '';
+    saveTd.style.cssText = 'padding:8px 5px 18px; border-top:1px solid var(--border); background:#1c1c22;';
+    const actions = document.createElement('div');
+    actions.className = 'edit-actions';
+    const sBtn = document.createElement('button');
+    sBtn.className = 'save-btn';
+    sBtn.style.background = 'var(--accent); color: #0f0f10;';
+    sBtn.textContent = 'Save';
+    sBtn.addEventListener('click', () => exitEditMode(date, true));
+    const cBtn = document.createElement('button');
+    cBtn.className = 'cancel-btn';
+    cBtn.textContent = 'Cancel';
+    cBtn.addEventListener('click', () => exitEditMode(date, false));
+    actions.appendChild(sBtn);
+    actions.appendChild(cBtn);
+    saveTd.innerHTML = '';
+    saveTd.appendChild(actions);
+  }
+}
+
+function exitEditMode(date, save) {
+  const th = document.querySelector(`thead th[data-date="${date}"]`);
+  const originals = editOriginalsMap[date] || {};
+
+  if (save) {
+    const newRows = readEditingInputs(date);
+    for (let i = sessions.length-1; i >= 0; i--) {
+      if (sessions[i].date === date) sessions.splice(i, 1);
+    }
+    newRows.forEach(r => sessions.push(r));
+    savePersisted();
+    showExportPrompt();
+    // Convert editing-cells back to prev-cells so renderColumn can find them
+    document.querySelectorAll(`.editing-cell[data-date="${date}"]`).forEach(td => {
+      td.className = 'prev-cell';
+    });
+    renderColumn(date);
+  } else {
+    // Cancel: for past sessions restore originals; for new session just remove col
+    const isNewSession = originals === null;
+    document.querySelectorAll(`tbody tr[data-exercise]`).forEach(tr => {
+      const machine = tr.dataset.exercise;
+      const editTd = tr.querySelector(`.editing-cell[data-date="${date}"]`);
+      if (!editTd) return;
+      if (isNewSession) {
+        editTd.remove();
+      } else {
+        const tmp = document.createElement('tbody');
+        tmp.innerHTML = `<tr>${originals[machine] || '<td class="prev-cell"></td>'}</tr>`;
+        editTd.replaceWith(tmp.querySelector('td'));
+      }
+    });
+    // Remove the header th and save-row cell if new session
+    if (isNewSession) {
+      const th = document.querySelector(`thead th[data-date="${date}"]`);
+      if (th) th.remove();
+      const saveTdNew = document.querySelector(`.save-row td[data-date="${date}"]`);
+      if (saveTdNew) saveTdNew.remove();
+    }
+  }
+
+  // Restore this date's save-row cell only
+  const saveTd = document.querySelector(`.save-row td[data-date="${date}"]`);
+  if (saveTd && saveTd._origHTML !== undefined) {
+    saveTd.innerHTML = saveTd._origHTML;
+    if (saveTd._origStyle) saveTd.setAttribute('style', saveTd._origStyle);
+    else saveTd.removeAttribute('style');
+    delete saveTd._origHTML; delete saveTd._origStyle;
+  }
+
+  // Restore th to read mode
+  if (th) {
+    th.classList.remove('editing');
+    th.innerHTML = buildThInner(fmtDate(date), 'read');
+  }
+
+  const wasNew = originals === null;
+  delete editOriginalsMap[date];
+  closePopover();
+  if (wasNew) showNewSessionBtn();
+  else syncStickyBtn();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// DELETE SESSION
+// ═══════════════════════════════════════════════════════════════
+function deleteSession(date, th) {
+  for (let i = sessions.length-1; i >= 0; i--) {
+    if (sessions[i].date === date) sessions.splice(i, 1);
+  }
+  savePersisted();
+  const wasLatest = th.classList.contains('date-latest');
+  th.remove();
+  if (wasLatest) {
+    const next = document.querySelector('thead th[data-date]');
+    // Skip Today th (it always has data-date but is always 2nd child)
+    const nextPrev = document.querySelector('thead th[data-date]:not(:nth-child(2))');
+    if (nextPrev) nextPrev.classList.add('date-latest');
+  }
+  document.querySelectorAll(`[data-date="${date}"]`).forEach(el => el.remove());
+}
+
+// ═══════════════════════════════════════════════════════════════
+// EXPORT CSV
+// ═══════════════════════════════════════════════════════════════
+function exportCSV() {
+  if (!sessions.length) { alert('No sessions to export yet.'); return; }
+  const sorted = [...sessions].sort((a,b) => {
+    if (a.date !== b.date) return a.date.localeCompare(b.date);
+    const mi = MACHINES.indexOf(a.machine) - MACHINES.indexOf(b.machine);
+    // Fall back to string sort for machines not in MACHINES list
+    if (mi !== 0) return mi !== 0 ? mi : a.machine.localeCompare(b.machine);
+    return a.set - b.set;
+  });
+  const lines = ['date,machine,set,weight_kg,reps'];
+  sorted.forEach(r => lines.push(`${r.date},${r.machine},${r.set},${r.weight},${r.reps}`));
+  const blob = new Blob([lines.join('\n')], {type:'text/csv'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'workouts.csv'; a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ═══════════════════════════════════════════════════════════════
+// IMPORT CSV
+// ═══════════════════════════════════════════════════════════════
+document.getElementById('csvImportInput').addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const lines = ev.target.result.trim().split('\n');
+    if (lines.length < 2) { alert('No data rows found in CSV.'); return; }
+
+    const header = lines[0].split(',').map(h => h.trim().toLowerCase());
+    const iDate    = header.indexOf('date');
+    const iMachine = header.indexOf('machine');
+    const iSet     = header.indexOf('set');
+    const iWeight  = header.indexOf('weight_kg');
+    const iReps    = header.indexOf('reps');
+    if ([iDate, iMachine, iSet, iWeight, iReps].some(i => i === -1)) {
+      alert('CSV missing required columns: date, machine, set, weight_kg, reps.'); return;
+    }
+
+    const newRows = [];
+    const machineOrder = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(',');
+      if (cols.length < 5) continue;
+      const date    = cols[iDate].trim();
+      const machine = cols[iMachine].trim();
+      const set     = parseInt(cols[iSet]);
+      const weight  = parseFloat(cols[iWeight]);
+      const reps    = parseInt(cols[iReps]);
+      if (!date || !machine || isNaN(set) || isNaN(weight) || isNaN(reps)) continue;
+      newRows.push({ date, machine, set, weight, reps });
+      if (!machineOrder.includes(machine)) machineOrder.push(machine);
+    }
+
+    if (!newRows.length) { alert('No valid rows found.'); return; }
+    if (!confirm(`Import ${newRows.length} rows across ${machineOrder.length} exercises? This will replace all current data.`)) return;
+
+    sessions.length = 0;
+    newRows.forEach(r => sessions.push(r));
+    MACHINES.length = 0;
+    machineOrder.forEach(m => MACHINES.push(m));
+    savePersisted();
+    render();
+    alert(`Imported ${newRows.length} rows across ${machineOrder.length} exercises.`);
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+});
+
+// ═══════════════════════════════════════════════════════════════
+// HAMBURGER MENU
+// ═══════════════════════════════════════════════════════════════
+const hamburgerMenu = document.getElementById('hamburgerMenu');
+const hamburgerBackdrop = document.getElementById('hamburgerBackdrop');
+document.querySelector('.hamburger').addEventListener('click', () => {
+  hamburgerMenu.classList.toggle('open'); hamburgerBackdrop.classList.toggle('open');
+});
+hamburgerBackdrop.addEventListener('click', () => {
+  hamburgerMenu.classList.remove('open'); hamburgerBackdrop.classList.remove('open');
+});
+document.getElementById('menuExportCSV').addEventListener('click', () => {
+  exportCSV(); hamburgerMenu.classList.remove('open'); hamburgerBackdrop.classList.remove('open');
+});
+document.getElementById('menuImportCSV').addEventListener('click', () => {
+  document.getElementById('csvImportInput').click();
+  hamburgerMenu.classList.remove('open'); hamburgerBackdrop.classList.remove('open');
+});
+
+// ═══════════════════════════════════════════════════════════════
+// HEADER EXPORT PROMPT
+// ═══════════════════════════════════════════════════════════════
+let exportPromptTimer = null;
+const headerExportPrompt = document.getElementById('headerExportPrompt');
+
+function showExportPrompt() {
+  headerExportPrompt.classList.add('visible');
+  clearTimeout(exportPromptTimer);
+  exportPromptTimer = setTimeout(() => headerExportPrompt.classList.remove('visible'), 10000);
+}
+
+document.getElementById('hepExportBtn').addEventListener('click', () => {
+  exportCSV();
+  headerExportPrompt.classList.remove('visible');
+  clearTimeout(exportPromptTimer);
+});
+
+document.getElementById('hepDismiss').addEventListener('click', () => {
+  headerExportPrompt.classList.remove('visible');
+  clearTimeout(exportPromptTimer);
+});
+
+// ═══════════════════════════════════════════════════════════════
+// BOOT
+// ═══════════════════════════════════════════════════════════════
+render();
+</script>
+</body>
+</html>
