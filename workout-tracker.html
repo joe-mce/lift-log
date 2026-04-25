@@ -565,6 +565,170 @@
 
   /* ── Bottom padding so table isn't hidden by sticky btn ── */
   .table-scroll { padding-bottom: 80px; }
+
+  /* ── Notes ── */
+  .cell-note {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 3px;
+    line-height: 1.3;
+    max-width: 100%;
+    white-space: normal;
+    word-break: break-word;
+  }
+  .note-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    border: 1px solid var(--text-dim);
+    color: var(--text-dim);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 9px;
+    font-weight: 700;
+    cursor: pointer;
+    flex-shrink: 0;
+    margin-left: 4px;
+    vertical-align: middle;
+    line-height: 1;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+  .note-icon:hover { border-color: var(--text-muted); color: var(--text-muted); }
+  .note-tooltip {
+    position: fixed;
+    background: #1e1e22;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 12px;
+    color: var(--text);
+    z-index: 1200;
+    max-width: 220px;
+    white-space: normal;
+    word-break: break-word;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+    line-height: 1.4;
+  }
+  .note-popover {
+    position: fixed;
+    background: #1e1e22;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    z-index: 1200;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    width: 240px;
+  }
+  .note-popover textarea {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    resize: none;
+    outline: none;
+    height: 80px;
+    display: block;
+    margin-bottom: 8px;
+  }
+  .note-popover textarea:focus { border-color: var(--accent); }
+  .note-popover .popover-actions { display: flex; gap: 6px; }
+  .note-popover .pop-ok {
+    flex: 1; background: var(--accent); color: #0f0f10; border: none;
+    border-radius: 5px; padding: 8px; font-family: 'Space Mono', monospace;
+    font-size: 10px; font-weight: 700; cursor: pointer; text-transform: uppercase;
+  }
+  .note-popover .pop-cancel {
+    flex: 1; background: none; border: 1px solid var(--border); color: var(--text-muted);
+    border-radius: 5px; padding: 8px; font-family: 'Space Mono', monospace;
+    font-size: 10px; font-weight: 700; cursor: pointer; text-transform: uppercase;
+  }
+
+  /* ── Add exercise tab ── */
+  .add-exercise-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    position: relative;
+    left: 0;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-top: none;
+    border-radius: 0 0 6px 6px;
+    padding: 5px 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+    white-space: nowrap;
+  }
+  .add-exercise-tab:active { background: var(--surface2); color: var(--accent); }
+
+  /* wrapper sits below the table, aligned to col 1 */
+  .add-exercise-wrap {
+    padding: 0 0 12px 0;
+    /* sticky col1 width so tab aligns under it */
+    width: var(--col1-width);
+  }
+
+  /* Add exercise popover */
+  .add-ex-popover {
+    position: fixed;
+    background: #1e1e22;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+    z-index: 1200;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+    width: 240px;
+  }
+  .add-ex-popover label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    display: block;
+    margin-bottom: 6px;
+  }
+  .add-ex-popover input {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 16px;
+    outline: none;
+    display: block;
+    margin-bottom: 8px;
+  }
+  .add-ex-popover input:focus { border-color: var(--accent); }
+  .add-ex-popover .popover-actions { display: flex; gap: 6px; }
+  .add-ex-popover .pop-ok {
+    flex: 1; background: var(--accent); color: #0f0f10; border: none;
+    border-radius: 5px; padding: 8px; font-family: 'Space Mono', monospace;
+    font-size: 10px; font-weight: 700; cursor: pointer; text-transform: uppercase;
+  }
+  .add-ex-popover .pop-cancel {
+    flex: 1; background: none; border: 1px solid var(--border); color: var(--text-muted);
+    border-radius: 5px; padding: 8px; font-family: 'Space Mono', monospace;
+    font-size: 10px; font-weight: 700; cursor: pointer; text-transform: uppercase;
+  }
 </style>
 </head>
 <body>
@@ -602,9 +766,30 @@
   </table>
 </div>
 
-<div id="emptyState" style="display:none; text-align:center; padding:48px 24px 120px;">
-  <div style="font-family:'Space Mono',monospace; font-size:11px; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">No sessions yet</div>
-  <div style="font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text-muted);">Import a CSV or tap <strong style="color:var(--text)">+ New Session</strong> to get started.</div>
+<div class="add-exercise-wrap" id="addExerciseWrap" style="display:none;">
+  <button class="add-exercise-tab" id="addExerciseTab">＋ Add exercise</button>
+</div>
+
+<div id="emptyState" style="display:none; padding:48px 24px 120px; text-align:center;">
+  <div style="font-family:'Space Mono',monospace; font-size:13px; font-weight:700; color:var(--text); margin-bottom:32px;">No workout data</div>
+
+  <div style="margin-bottom:24px;">
+    <div style="font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text-muted); margin-bottom:10px;">Starting fresh?</div>
+    <button id="emptyAddExBtn" style="
+      background:var(--accent); color:#0f0f10; border:none; border-radius:7px;
+      padding:12px 20px; font-family:'Space Mono',monospace; font-size:11px;
+      font-weight:700; text-transform:uppercase; cursor:pointer; letter-spacing:0.3px;
+      touch-action:manipulation; width:200px;">Add an exercise</button>
+  </div>
+
+  <div>
+    <div style="font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text-muted); margin-bottom:10px;">Already have data?</div>
+    <button id="emptyImportBtn" style="
+      background:none; color:var(--text-muted); border:1px solid var(--border);
+      border-radius:7px; padding:12px 20px; font-family:'Space Mono',monospace;
+      font-size:11px; font-weight:700; text-transform:uppercase; cursor:pointer;
+      letter-spacing:0.3px; touch-action:manipulation; width:200px;">Import CSV</button>
+  </div>
 </div>
 
 
@@ -627,6 +812,22 @@ function savePersisted() {
   localStorage.setItem(LS_SESSIONS, JSON.stringify(sessions));
   localStorage.setItem(LS_MACHINES, JSON.stringify(MACHINES));
 }
+// ─── Notes helpers ───────────────────────────────────────────
+// Note is stored on the last set row for a given date+machine as row.note
+function getNote(date, machine) {
+  const sets = getSets(date, machine);
+  if (!sets.length) return '';
+  return sets[sets.length - 1].note || '';
+}
+
+function setNote(date, machine, note) {
+  const sets = getSets(date, machine);
+  if (!sets.length) return;
+  // Store on last set
+  sets[sets.length - 1].note = note || undefined;
+  savePersisted();
+}
+
 // ═══════════════════════════════════════════════════════════════
 // CONSTANTS
 // ═══════════════════════════════════════════════════════════════
@@ -701,13 +902,19 @@ function buildPrevCellHTML(date, machine) {
   const prevMax = prev ? maxWeight(prev, machine) : null;
   const showUp = prevMax !== null && curMax > prevMax;
   const maxIdx = groups.reduce((mi, g, i) => g.weight > groups[mi].weight ? i : mi, 0);
-  let html = '<div class="wg-row">';
+  const note = getNote(date, machine);
+  let html = '<div style="display:flex;align-items:center;gap:2px;">';
+  html += '<div class="wg-row" style="flex:1;">';
   groups.forEach((g, i) => {
     const kg = i === groups.length - 1 ? 'kg' : '';
     const arrow = (showUp && i === maxIdx) ? '<div class="wg-up">▲</div>' : '';
     const setsHtml = g.reps.map(r => `<div class="wg-set">${r}</div>`).join('');
     html += `<div class="wg">${arrow}<div class="wg-weight">${fmtW(g.weight)}${kg}</div><div class="wg-sets">${setsHtml}</div></div>`;
   });
+  html += '</div>';
+  if (note) {
+    html += `<span class="note-icon" data-note="${note.replace(/"/g,'&quot;')}">i</span>`;
+  }
   return html + '</div>';
 }
 
@@ -807,9 +1014,22 @@ function render() {
   wireHeaderClicks();
   showNewSessionBtn();
 
-  // Show empty state if no sessions
+  // Show empty state when no exercises defined yet
+  updateEmptyState();
+}
+
+function updateEmptyState() {
+  const showEmpty = MACHINES.length === 0;
   const emptyState = document.getElementById('emptyState');
-  if (emptyState) emptyState.style.display = sessions.length ? 'none' : 'block';
+  const addWrap = document.getElementById('addExerciseWrap');
+  const stickyBottom = document.getElementById('stickyBottom');
+  if (emptyState) emptyState.style.display = showEmpty ? 'block' : 'none';
+  if (addWrap) addWrap.style.display = showEmpty ? 'none' : 'block';
+  if (showEmpty) {
+    if (stickyBottom) stickyBottom.style.display = 'none';
+  } else {
+    showNewSessionBtn(); // re-wires the button listener too
+  }
 }
 
 // ═══════════════════════════════════════════════════════════════
@@ -821,6 +1041,113 @@ function renderColumn(date) {
     td.innerHTML = buildPrevCellHTML(date, machine);
   });
 }
+
+// ─── Note tooltip ─────────────────────────────────────────────
+let activeTooltip = null;
+function closeTooltip() {
+  if (activeTooltip) { activeTooltip.remove(); activeTooltip = null; }
+}
+document.addEventListener('click', e => {
+  const icon = e.target.closest('.note-icon');
+  if (!icon) { closeTooltip(); return; }
+  e.stopPropagation();
+  closeTooltip();
+  const tip = document.createElement('div');
+  tip.className = 'note-tooltip';
+  tip.textContent = icon.dataset.note;
+  document.body.appendChild(tip);
+  activeTooltip = tip;
+  // Position near icon
+  const rect = icon.getBoundingClientRect();
+  let top = rect.bottom + 6;
+  let left = rect.left;
+  if (left + 230 > window.innerWidth - 8) left = window.innerWidth - 238;
+  if (top + 80 > window.innerHeight - 8) top = rect.top - 86;
+  tip.style.top = top + 'px';
+  tip.style.left = left + 'px';
+}, true);
+
+// ─── Note popover ─────────────────────────────────────────────
+let activeNotePopover = null;
+function closeNotePopover() {
+  if (activeNotePopover) { activeNotePopover.remove(); activeNotePopover = null; }
+}
+
+function showNotePopover(anchor, date, machine) {
+  closeNotePopover();
+
+  // For new sessions (not yet in sessions[]), read/write note from DOM data-note attribute
+  const isNewSession = editOriginalsMap[date] === null;
+  const editCell = document.querySelector(`tbody tr[data-exercise="${machine}"] td.editing-cell[data-date="${date}"]`);
+
+  const existing = isNewSession
+    ? (editCell ? editCell.dataset.pendingNote || '' : '')
+    : getNote(date, machine);
+
+  const pop = document.createElement('div');
+  pop.className = 'note-popover';
+  pop.innerHTML = `
+    <textarea placeholder="Add a note…">${existing}</textarea>
+    <div class="popover-actions">
+      <button class="pop-cancel">Cancel</button>
+      <button class="pop-ok">Save</button>
+    </div>`;
+  document.body.appendChild(pop);
+  activeNotePopover = pop;
+
+  const rect = anchor.getBoundingClientRect();
+  let top = rect.bottom + 6;
+  let left = rect.left;
+  if (left + 250 > window.innerWidth - 8) left = window.innerWidth - 258;
+  if (top + 160 > window.innerHeight - 8) top = rect.top - 166;
+  pop.style.top = top + 'px';
+  pop.style.left = left + 'px';
+
+  const ta = pop.querySelector('textarea');
+  ta.focus();
+
+  pop.querySelector('.pop-ok').addEventListener('click', () => {
+    const val = ta.value.trim();
+    closeNotePopover();
+
+    if (isNewSession) {
+      // Store temporarily on the edit cell DOM — written to sessions[] on log
+      if (editCell) {
+        editCell.dataset.pendingNote = val;
+        let noteEl = editCell.querySelector('.cell-note');
+        if (val) {
+          if (!noteEl) { noteEl = document.createElement('div'); noteEl.className = 'cell-note'; editCell.appendChild(noteEl); }
+          noteEl.textContent = '📝 ' + val;
+        } else {
+          if (noteEl) noteEl.remove();
+        }
+      }
+    } else {
+      // Past session — write directly to sessions[]
+      setNote(date, machine, val);
+      // Update note display in the specific edit cell for this machine
+      if (editCell) {
+        let noteEl = editCell.querySelector('.cell-note');
+        if (val) {
+          if (!noteEl) { noteEl = document.createElement('div'); noteEl.className = 'cell-note'; editCell.appendChild(noteEl); }
+          noteEl.textContent = '📝 ' + val;
+        } else {
+          if (noteEl) noteEl.remove();
+        }
+      }
+      // Re-render the prev-cell for this specific machine in this column
+      const prevCell = document.querySelector(`tbody tr[data-exercise="${machine}"] td.prev-cell[data-date="${date}"]`);
+      if (prevCell) prevCell.innerHTML = buildPrevCellHTML(date, machine);
+    }
+  });
+  pop.querySelector('.pop-cancel').addEventListener('click', closeNotePopover);
+}
+
+document.addEventListener('click', e => {
+  if (activeNotePopover && !activeNotePopover.contains(e.target) && !e.target.closest('.ctx-item')) {
+    closeNotePopover();
+  }
+});
 
 // ═══════════════════════════════════════════════════════════════
 // SPINNER WIRING — integers only; snap to nearest int first
@@ -897,6 +1224,7 @@ function readEditingInputs(date) {
 // NEW SESSION / LOG SESSION
 // ═══════════════════════════════════════════════════════════════
 function showNewSessionBtn() {
+  if (MACHINES.length === 0) return; // stay hidden in empty state
   const sb = document.getElementById('stickyBottom');
   sb.style.display = '';
   sb.innerHTML = '<button class="new-session-btn" id="newSessionBtn">+ New Session</button>';
@@ -972,6 +1300,16 @@ function logSession(date) {
     if (sessions[i].date === date) sessions.splice(i, 1);
   }
   rows.forEach(r => sessions.push(r));
+
+  // Write any pending notes from DOM into the last set of each machine
+  document.querySelectorAll(`tbody tr[data-exercise]`).forEach(tr => {
+    const machine = tr.dataset.exercise;
+    const editCell = tr.querySelector(`.editing-cell[data-date="${date}"]`);
+    if (!editCell) return;
+    const note = editCell.dataset.pendingNote;
+    if (note) setNote(date, machine, note);
+  });
+
   savePersisted();
 
   // Switch editing-cells to prev-cells and render
@@ -1264,6 +1602,53 @@ function buildExerciseMenu(row, sourceCell) {
     closeMenu();
   });
   menu.appendChild(weightBtn);
+
+  // Note option — only in edit mode (sourceCell is editing-cell)
+  if (sourceCell && sourceCell.classList.contains('editing-cell')) {
+    const date = sourceCell.dataset.date;
+    const machine = row.dataset.exercise;
+    const isNewSession = editOriginalsMap[date] === null;
+    const existingNote = isNewSession
+      ? (sourceCell.dataset.pendingNote || '')
+      : getNote(date, machine);
+    menu.appendChild(mkDiv('ctx-divider'));
+
+    if (existingNote) {
+      const editNoteBtn = document.createElement('button');
+      editNoteBtn.className = 'ctx-item';
+      editNoteBtn.textContent = '📝  Edit note';
+      editNoteBtn.addEventListener('click', () => {
+        closeMenu();
+        showNotePopover(sourceCell.querySelector('.opts-btn') || sourceCell, date, machine);
+      });
+      menu.appendChild(editNoteBtn);
+
+      const delNoteBtn = document.createElement('button');
+      delNoteBtn.className = 'ctx-item danger';
+      delNoteBtn.textContent = '✕  Delete note';
+      delNoteBtn.addEventListener('click', () => {
+        if (isNewSession) {
+          delete sourceCell.dataset.pendingNote;
+        } else {
+          setNote(date, machine, '');
+          const prevCell = document.querySelector(`tbody tr[data-exercise="${machine}"] td.prev-cell[data-date="${date}"]`);
+          if (prevCell) prevCell.innerHTML = buildPrevCellHTML(date, machine);
+        }
+        sourceCell.querySelector('.cell-note')?.remove();
+        closeMenu();
+      });
+      menu.appendChild(delNoteBtn);
+    } else {
+      const addNoteBtn = document.createElement('button');
+      addNoteBtn.className = 'ctx-item';
+      addNoteBtn.textContent = '📝  Add note';
+      addNoteBtn.addEventListener('click', () => {
+        closeMenu();
+        showNotePopover(sourceCell.querySelector('.opts-btn') || sourceCell, date, machine);
+      });
+      menu.appendChild(addNoteBtn);
+    }
+  }
 }
 
 function positionMenu(el, anchor, w, h) {
@@ -1442,7 +1827,6 @@ function enterEditMode(date, th) {
     editTd.className = 'editing-cell';
     editTd.dataset.date = date;
     if (!sets.length) {
-      // No data for this exercise on this date — show as skipped
       editTd.innerHTML = buildInputGroupFromGroups([{weight:0, reps:[0]}]);
       td.replaceWith(editTd);
       editTd.querySelectorAll('.spinner').forEach(wireSpinner);
@@ -1454,6 +1838,14 @@ function enterEditMode(date, th) {
       editTd.innerHTML = buildInputGroupFromGroups(groups);
       td.replaceWith(editTd);
       editTd.querySelectorAll('.spinner').forEach(wireSpinner);
+    }
+    // Show existing note in edit cell
+    const existingNote = getNote(date, machine);
+    if (existingNote) {
+      const noteEl = document.createElement('div');
+      noteEl.className = 'cell-note';
+      noteEl.textContent = '📝 ' + existingNote;
+      editTd.appendChild(noteEl);
     }
   });
 
@@ -1575,8 +1967,11 @@ function exportCSV() {
     if (mi !== 0) return mi !== 0 ? mi : a.machine.localeCompare(b.machine);
     return a.set - b.set;
   });
-  const lines = ['date,machine,set,weight_kg,reps'];
-  sorted.forEach(r => lines.push(`${r.date},${r.machine},${r.set},${r.weight},${r.reps}`));
+  const lines = ['date,machine,set,weight_kg,reps,note'];
+  sorted.forEach(r => {
+    const note = (r.note || '').replace(/,/g, ';').replace(/\n/g, ' ');
+    lines.push(`${r.date},${r.machine},${r.set},${r.weight},${r.reps},${note}`);
+  });
   const blob = new Blob([lines.join('\n')], {type:'text/csv'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1601,6 +1996,7 @@ document.getElementById('csvImportInput').addEventListener('change', e => {
     const iSet     = header.indexOf('set');
     const iWeight  = header.indexOf('weight_kg');
     const iReps    = header.indexOf('reps');
+    const iNote    = header.indexOf('note'); // optional
     if ([iDate, iMachine, iSet, iWeight, iReps].some(i => i === -1)) {
       alert('CSV missing required columns: date, machine, set, weight_kg, reps.'); return;
     }
@@ -1616,7 +2012,9 @@ document.getElementById('csvImportInput').addEventListener('change', e => {
       const weight  = parseFloat(cols[iWeight]);
       const reps    = parseInt(cols[iReps]);
       if (!date || !machine || isNaN(set) || isNaN(weight) || isNaN(reps)) continue;
-      newRows.push({ date, machine, set, weight, reps });
+      const row = { date, machine, set, weight, reps };
+      if (iNote !== -1 && cols[iNote] && cols[iNote].trim()) row.note = cols[iNote].trim();
+      newRows.push(row);
       if (!machineOrder.includes(machine)) machineOrder.push(machine);
     }
 
@@ -1677,10 +2075,145 @@ document.getElementById('hepDismiss').addEventListener('click', () => {
   clearTimeout(exportPromptTimer);
 });
 
+
+// ═══════════════════════════════════════════════════════════════
+// ADD EXERCISE
+// ═══════════════════════════════════════════════════════════════
+let addExPopover = null;
+
+function closeAddExPopover() {
+  if (addExPopover) { addExPopover.remove(); addExPopover = null; }
+}
+
+function openAddExPopover(anchor) {
+  if (addExPopover) { closeAddExPopover(); return; }
+
+  const pop = document.createElement('div');
+  pop.className = 'add-ex-popover';
+  pop.innerHTML = `
+    <label>Exercise name</label>
+    <input type="text" placeholder="e.g. Bicep Curl" maxlength="40">
+    <div class="popover-actions">
+      <button class="pop-cancel">Cancel</button>
+      <button class="pop-ok">Add</button>
+    </div>`;
+  document.body.appendChild(pop);
+  addExPopover = pop;
+
+  // Position near anchor element
+  const rect = anchor.getBoundingClientRect();
+  let top = rect.bottom + 6;
+  let left = rect.left;
+  if (left + 250 > window.innerWidth - 8) left = window.innerWidth - 258;
+  if (top + 140 > window.innerHeight - 8) top = rect.top - 146;
+  pop.style.top = top + 'px';
+  pop.style.left = left + 'px';
+
+  const input = pop.querySelector('input');
+  input.focus();
+
+  const commit = () => {
+    const name = input.value.trim();
+    if (!name) { closeAddExPopover(); return; }
+    if (MACHINES.includes(name)) { alert(`"${name}" already exists.`); return; }
+    closeAddExPopover();
+    addExerciseRow(name);
+  };
+
+  pop.querySelector('.pop-ok').addEventListener('click', commit);
+  pop.querySelector('.pop-cancel').addEventListener('click', closeAddExPopover);
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); }
+    if (e.key === 'Escape') closeAddExPopover();
+  });
+}
+
+document.getElementById('addExerciseTab').addEventListener('click', function(e) {
+  e.stopPropagation();
+  openAddExPopover(this);
+});
+
+// Close on outside click
+document.addEventListener('click', e => {
+  if (addExPopover && !addExPopover.contains(e.target)
+      && e.target.id !== 'addExerciseTab'
+      && e.target.id !== 'emptyAddExBtn') {
+    closeAddExPopover();
+  }
+});
+
+function addExerciseRow(name) {
+  MACHINES.push(name);
+  savePersisted();
+  updateEmptyState();
+
+  const headerRow = document.getElementById('headerRow');
+  const tbody = document.getElementById('tableBody');
+  const saveRow = tbody.querySelector('.save-row');
+
+  // Build the new tr
+  const tr = document.createElement('tr');
+  tr.dataset.exercise = name;
+
+  // Col 1: machine name
+  const nameTd = document.createElement('td');
+  nameTd.innerHTML = `<div class="machine-name">${name}</div>`;
+  tr.appendChild(nameTd);
+
+  // For each column in the header (skip the first th which is the machine col)
+  const ths = Array.from(headerRow.querySelectorAll('th')).slice(1);
+  ths.forEach(th => {
+    const date = th.dataset.date;
+    const isEditing = th.classList.contains('editing');
+
+    const td = document.createElement('td');
+    td.dataset.date = date;
+
+    // Is this the new-session edit column? (editOriginalsMap[date] === null)
+    const isNewSession = date && editOriginalsMap[date] === null;
+
+    if (isEditing && isNewSession) {
+      // New session column: prepopulate with defaults
+      td.className = 'editing-cell';
+      const groups = [{weight: 0, reps: [20]}];
+      td.innerHTML = buildInputGroupFromGroups(groups);
+      td.querySelectorAll('.spinner').forEach(wireSpinner);
+    } else if (isEditing) {
+      // Past session in edit mode: show as skipped
+      td.className = 'editing-cell';
+      td.innerHTML = buildInputGroupFromGroups([{weight: 0, reps: [0]}]);
+      td.querySelectorAll('.spinner').forEach(wireSpinner);
+      const group = td.querySelector('.input-group');
+      skipCell(group, tr, name);
+    } else {
+      // Read mode: empty (exercise wasn't done)
+      td.className = 'prev-cell';
+      td.innerHTML = '';
+    }
+    tr.appendChild(td);
+  });
+
+  // Insert before save-row
+  tbody.insertBefore(tr, saveRow);
+
+  // Also add an empty td to the save-row for each column
+  // (save-row already has the right number; no action needed since we mirror ths)
+}
+
 // ═══════════════════════════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════════════════════════
 render();
+
+// Wire empty state buttons (rendered in HTML, not JS-built)
+document.getElementById('emptyAddExBtn').addEventListener('click', function(e) {
+  e.stopPropagation();
+  openAddExPopover(this);
+});
+
+document.getElementById('emptyImportBtn').addEventListener('click', () => {
+  document.getElementById('csvImportInput').click();
+});
 </script>
 </body>
 </html>
