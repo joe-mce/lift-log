@@ -96,10 +96,10 @@
   }
 
   thead th {
-    padding: 5px 6px;
+    padding: 5px 8px;
     text-align: left;
     font-family: 'Space Mono', monospace;
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 700;
     color: var(--text-dim);
     text-transform: uppercase;
@@ -109,6 +109,7 @@
     vertical-align: bottom;
     width: var(--prev-col-width);
     min-width: var(--prev-col-width);
+    cursor: default;
   }
   thead th:first-child { width: var(--col1-width); min-width: var(--col1-width); }
   thead th:nth-child(2) { color: var(--accent); }
@@ -298,7 +299,9 @@
     touch-action: manipulation;
     letter-spacing: 0;
     line-height: 0.4;
-    padding-bottom: 4px;
+    padding-bottom: 0;
+    align-self: flex-end;
+    margin-bottom: 2px;
   }
   .opts-btn:active { border-color: var(--accent); color: var(--accent); }
 
@@ -392,9 +395,9 @@
     color: var(--accent);
     line-height: 1;
   }
-  .wg-weight { font-size: 10px; color: var(--text); white-space: nowrap; }
-  .wg-sets { display: flex; flex-direction: row; gap: 4px; }
-  .wg-set { font-size: 9px; color: var(--text-muted); white-space: nowrap; }
+  .wg-weight { font-size: 12px; color: var(--text); white-space: nowrap; }
+  .wg-sets { display: flex; flex-direction: row; gap: 5px; }
+  .wg-set { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
 
   .save-row td {
     padding: 8px 5px 18px;
@@ -445,7 +448,7 @@
     padding: 4px 5px;
     background: #1c1c22;
   }
-  thead th:not(:first-child):not(:nth-child(2)):not(.editing) { cursor: pointer; }
+  thead th[data-date]:not(.editing) { cursor: pointer; }
   thead th:not(:first-child):not(:nth-child(2)):not(.editing):hover { color: var(--text-muted); }
 
   /* Save/cancel side by side */
@@ -564,7 +567,7 @@
 
 
   /* ── Bottom padding so table isn't hidden by sticky btn ── */
-  .table-scroll { padding-bottom: 80px; }
+  .table-scroll { padding-bottom: 0; }
 
   /* ── Notes ── */
   .cell-note {
@@ -677,11 +680,12 @@
   }
   .add-exercise-tab:active { background: var(--surface2); color: var(--accent); }
 
-  /* wrapper sits below the table, aligned to col 1 */
+  /* wrapper sits below col 1 of the table */
   .add-exercise-wrap {
-    padding: 0 0 12px 0;
-    /* sticky col1 width so tab aligns under it */
+    padding: 0 0 90px 0;
     width: var(--col1-width);
+    min-width: var(--col1-width);
+    flex-shrink: 0;
   }
 
   /* Add exercise popover */
@@ -754,8 +758,10 @@
 <div class="ctx-backdrop" id="hamburgerBackdrop"></div>
 <div class="hamburger-menu" id="hamburgerMenu">
   <div class="hmenu-header">LIFT LOG</div>
-  <button class="ctx-item accent" id="menuExportCSV">&#x2193;&#160;&#160;Export CSV</button>
+  <button class="ctx-item" id="menuExportCSV">&#x2193;&#160;&#160;Export CSV</button>
   <button class="ctx-item" id="menuImportCSV">&#x2191;&#160;&#160;Import CSV</button>
+  <div class="ctx-divider"></div>
+  <button class="ctx-item danger" id="menuReset">&#x2715;&#160;&#160;Clear all data</button>
 </div>
 <input type="file" id="csvImportInput" accept=".csv" style="display:none">
 
@@ -765,9 +771,9 @@
     <tbody id="tableBody"></tbody>
   </table>
 </div>
-
 <div class="add-exercise-wrap" id="addExerciseWrap" style="display:none;">
   <button class="add-exercise-tab" id="addExerciseTab">＋ Add exercise</button>
+</div>
 </div>
 
 <div id="emptyState" style="display:none; padding:48px 24px 120px; text-align:center;">
@@ -920,7 +926,7 @@ function buildPrevCellHTML(date, machine) {
 
 function buildTodayCellHTML(machine) {
   const sets = lastSets(machine);
-  const groups = sets.length ? groupByWeight(sets) : [{weight: 0, reps: [0]}];
+  const groups = sets.length ? groupByWeight(sets) : [{weight: 20, reps: [20]}];
   const isCustom = groups.length > 1;
   let html = '<div class="input-group">';
   if (!isCustom) {
@@ -1234,6 +1240,18 @@ function showNewSessionBtn() {
 function startNewSession() {
   const date = todayStr();
 
+  // Prevent duplicate date
+  if (getDates().includes(date)) {
+    const sb = document.getElementById('stickyBottom');
+    const orig = sb.innerHTML;
+    sb.innerHTML = `<div style="
+      font-family:'Space Mono',monospace; font-size:11px; color:var(--danger);
+      text-align:center; padding:14px 16px; text-transform:uppercase; letter-spacing:0.3px;
+    ">Session for ${fmtDate(date)} already exists — edit it instead</div>`;
+    setTimeout(() => { sb.innerHTML = orig; document.getElementById('newSessionBtn').addEventListener('click', startNewSession); }, 3000);
+    return;
+  }
+
   // Hide sticky button
   document.getElementById('stickyBottom').style.display = 'none';
   const emptyState = document.getElementById('emptyState');
@@ -1257,7 +1275,7 @@ function startNewSession() {
     const editTd = document.createElement('td');
     editTd.className = 'editing-cell';
     editTd.dataset.date = date;
-    const groups = ls.length ? groupByWeight(ls) : [{weight: 0, reps: [20]}];
+    const groups = ls.length ? groupByWeight(ls) : [{weight: 20, reps: [20]}];
     editTd.innerHTML = buildInputGroupFromGroups(groups);
     tr.children[0].after(editTd);
     editTd.querySelectorAll('.spinner').forEach(wireSpinner);
@@ -1274,11 +1292,11 @@ function startNewSession() {
   const sBtn = document.createElement('button');
   sBtn.className = 'save-btn';
   sBtn.textContent = 'Save';
-  sBtn.addEventListener('click', () => logSession(date));
+  sBtn.addEventListener('click', () => logSession(saveTd.dataset.date));
   const cBtn = document.createElement('button');
   cBtn.className = 'cancel-btn';
   cBtn.textContent = 'Cancel';
-  cBtn.addEventListener('click', () => cancelNewSession(date));
+  cBtn.addEventListener('click', () => cancelNewSession(saveTd.dataset.date));
   actions.appendChild(sBtn);
   actions.appendChild(cBtn);
   saveTd.appendChild(actions);
@@ -1390,7 +1408,10 @@ function showDatePopover(th) {
   popover.style.left = left + 'px';
 
   const input = popover.querySelector('input');
-  input.focus(); input.select();
+  input.focus();
+  // Cursor at end, not selected
+  const len = input.value.length;
+  input.setSelectionRange(len, len);
 
   const commit = () => {
     const val = input.value.trim();
@@ -1482,7 +1503,7 @@ function unskipCell(group, row, machine) {
   if (optsBtn) optsBtn.style.display = '';
   // Repopulate from last known data for this machine
   const prior = lastSets(machine);
-  const groups = prior.length ? groupByWeight(prior) : [{weight: 0, reps: [20]}];
+  const groups = prior.length ? groupByWeight(prior) : [{weight: 20, reps: [20]}];
   const isCustom = groups.length > 1;
   if (!isCustom) {
     group.insertBefore(makeSpinnerCell('kg', fmtW(groups[0].weight), true), optsBtn);
@@ -1709,9 +1730,27 @@ document.getElementById('headerRow').addEventListener('click', e => {
   delBtn.className = 'ctx-item danger';
   delBtn.textContent = '✕  Delete session';
   delBtn.addEventListener('click', () => {
-    closeDateMenu();
-    if (!confirm(`Delete session "${fmtDate(date)}"? This cannot be undone.`)) return;
-    deleteSession(date, th);
+    // Swap to inline confirm to avoid iOS confirm() blocking
+    dateMenu.innerHTML = '';
+    const msg = document.createElement('div');
+    msg.style.cssText = 'padding:10px 16px 6px; font-family:DM Sans,sans-serif; font-size:13px; color:var(--text-muted);';
+    msg.textContent = `Delete "${fmtDate(date)}"?`;
+    dateMenu.appendChild(msg);
+    const btns = document.createElement('div');
+    btns.style.cssText = 'display:flex; gap:6px; padding:4px 10px 10px;';
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'ctx-item danger';
+    confirmBtn.style.cssText = 'flex:1; text-align:center; border-radius:6px; border:1px solid var(--danger);';
+    confirmBtn.textContent = 'Delete';
+    confirmBtn.addEventListener('click', () => { closeDateMenu(); deleteSession(date, th); });
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'ctx-item';
+    cancelBtn.style.cssText = 'flex:1; text-align:center; border-radius:6px; border:1px solid var(--border);';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.addEventListener('click', closeDateMenu);
+    btns.appendChild(cancelBtn);
+    btns.appendChild(confirmBtn);
+    dateMenu.appendChild(btns);
   });
   dateMenu.appendChild(delBtn);
 
@@ -1749,11 +1788,20 @@ function showDatePopover(th) {
   popover.style.left = left + 'px';
 
   const input = popover.querySelector('input');
-  input.focus(); input.select();
+  input.focus();
+  // Cursor at end, not selected
+  const len = input.value.length;
+  input.setSelectionRange(len, len);
 
   const commit = () => {
     const val = input.value.trim();
     if (isValidDate(val) && val !== currentDate) {
+      // Reject if another session already uses this date
+      if (getDates().includes(val)) {
+        input.style.borderColor = 'var(--danger)';
+        input.title = `A session for ${fmtDate(val)} already exists`;
+        return;
+      }
       // Rename date in sessions data
       sessions.forEach(r => { if (r.date === currentDate) r.date = val; });
       // Update all data-date attributes
@@ -1861,11 +1909,11 @@ function enterEditMode(date, th) {
     sBtn.className = 'save-btn';
     sBtn.style.background = 'var(--accent); color: #0f0f10;';
     sBtn.textContent = 'Save';
-    sBtn.addEventListener('click', () => exitEditMode(date, true));
+    sBtn.addEventListener('click', () => exitEditMode(saveTd.dataset.date, true));
     const cBtn = document.createElement('button');
     cBtn.className = 'cancel-btn';
     cBtn.textContent = 'Cancel';
-    cBtn.addEventListener('click', () => exitEditMode(date, false));
+    cBtn.addEventListener('click', () => exitEditMode(saveTd.dataset.date, false));
     actions.appendChild(sBtn);
     actions.appendChild(cBtn);
     saveTd.innerHTML = '';
@@ -1878,14 +1926,30 @@ function exitEditMode(date, save) {
   const originals = editOriginalsMap[date] || {};
 
   if (save) {
+    // Snapshot notes before deleting old rows
+    const savedNotes = {};
+    MACHINES.forEach(machine => {
+      const note = getNote(date, machine);
+      if (note) savedNotes[machine] = note;
+    });
+    // Also capture any pendingNote on editing cells (belt and suspenders)
+    document.querySelectorAll(`tbody tr[data-exercise]`).forEach(tr => {
+      const machine = tr.dataset.exercise;
+      const editCell = tr.querySelector(`.editing-cell[data-date="${date}"]`);
+      if (editCell && editCell.dataset.pendingNote) savedNotes[machine] = editCell.dataset.pendingNote;
+    });
+
     const newRows = readEditingInputs(date);
     for (let i = sessions.length-1; i >= 0; i--) {
       if (sessions[i].date === date) sessions.splice(i, 1);
     }
     newRows.forEach(r => sessions.push(r));
+
+    // Re-apply notes to new last-set rows
+    Object.entries(savedNotes).forEach(([machine, note]) => setNote(date, machine, note));
+
     savePersisted();
     showExportPrompt();
-    // Convert editing-cells back to prev-cells so renderColumn can find them
     document.querySelectorAll(`.editing-cell[data-date="${date}"]`).forEach(td => {
       td.className = 'prev-cell';
     });
@@ -2044,13 +2108,46 @@ document.querySelector('.hamburger').addEventListener('click', () => {
 hamburgerBackdrop.addEventListener('click', () => {
   hamburgerMenu.classList.remove('open'); hamburgerBackdrop.classList.remove('open');
 });
-document.getElementById('menuExportCSV').addEventListener('click', () => {
-  exportCSV(); hamburgerMenu.classList.remove('open'); hamburgerBackdrop.classList.remove('open');
-});
-document.getElementById('menuImportCSV').addEventListener('click', () => {
-  document.getElementById('csvImportInput').click();
-  hamburgerMenu.classList.remove('open'); hamburgerBackdrop.classList.remove('open');
-});
+function rewireHamburgerMenu() {
+  document.getElementById('menuExportCSV').addEventListener('click', () => {
+    exportCSV(); hamburgerMenu.classList.remove('open'); hamburgerBackdrop.classList.remove('open');
+  });
+  document.getElementById('menuImportCSV').addEventListener('click', () => {
+    document.getElementById('csvImportInput').click();
+    hamburgerMenu.classList.remove('open'); hamburgerBackdrop.classList.remove('open');
+  });
+  document.getElementById('menuReset').addEventListener('click', () => {
+    hamburgerMenu.innerHTML = `
+      <div class="hmenu-header">LIFT LOG</div>
+      <div style="padding:10px 16px 6px; font-family:'DM Sans',sans-serif; font-size:13px; color:var(--text-muted);">Clear all data?</div>
+      <div style="display:flex; gap:6px; padding:4px 10px 12px;">
+        <button id="resetCancel" class="ctx-item" style="flex:1;text-align:center;border-radius:6px;border:1px solid var(--border);">Cancel</button>
+        <button id="resetConfirm" class="ctx-item danger" style="flex:1;text-align:center;border-radius:6px;border:1px solid var(--danger);">Clear</button>
+      </div>`;
+    document.getElementById('resetCancel').addEventListener('click', () => {
+      hamburgerMenu.classList.remove('open'); hamburgerBackdrop.classList.remove('open');
+      restoreHamburgerMenu();
+    });
+    document.getElementById('resetConfirm').addEventListener('click', () => {
+      hamburgerMenu.classList.remove('open'); hamburgerBackdrop.classList.remove('open');
+      sessions.length = 0; MACHINES.length = 0;
+      savePersisted(); render();
+      restoreHamburgerMenu();
+    });
+  });
+}
+
+function restoreHamburgerMenu() {
+  hamburgerMenu.innerHTML = `
+    <div class="hmenu-header">LIFT LOG</div>
+    <button class="ctx-item" id="menuExportCSV">&#x2193;&#160;&#160;Export CSV</button>
+    <button class="ctx-item" id="menuImportCSV">&#x2191;&#160;&#160;Import CSV</button>
+    <div class="ctx-divider"></div>
+    <button class="ctx-item danger" id="menuReset">&#x2715;&#160;&#160;Clear all data</button>`;
+  rewireHamburgerMenu();
+}
+
+rewireHamburgerMenu();
 
 // ═══════════════════════════════════════════════════════════════
 // HEADER EXPORT PROMPT
@@ -2175,7 +2272,7 @@ function addExerciseRow(name) {
     if (isEditing && isNewSession) {
       // New session column: prepopulate with defaults
       td.className = 'editing-cell';
-      const groups = [{weight: 0, reps: [20]}];
+      const groups = [{weight: 20, reps: [20]}];
       td.innerHTML = buildInputGroupFromGroups(groups);
       td.querySelectorAll('.spinner').forEach(wireSpinner);
     } else if (isEditing) {
