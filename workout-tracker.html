@@ -1464,6 +1464,7 @@ function logSession(date) {
 
   delete editOriginalsMap[date];
   closePopover();
+  reorderColumnByDate(date);
   showNewSessionBtn();
   showExportPrompt();
 }
@@ -2068,6 +2069,7 @@ function exitEditMode(date, save) {
       td.className = 'prev-cell';
     });
     renderColumn(date);
+    reorderColumnByDate(date);
   } else {
     // Cancel: for past sessions restore originals; for new session just remove col
     const isNewSession = originals === null;
@@ -2600,6 +2602,50 @@ document.getElementById('statsToggle').addEventListener('click', e => {
     }
   }, { passive: true });
 })();
+
+
+// ═══════════════════════════════════════════════════════════════
+// REORDER COLUMN BY DATE
+// ═══════════════════════════════════════════════════════════════
+function reorderColumnByDate(date) {
+  // Collect all date ths (excluding machine-name th at index 0)
+  const headerRow = document.getElementById('headerRow');
+  const allThs = Array.from(headerRow.querySelectorAll('th[data-date]'));
+  if (allThs.length <= 1) return; // nothing to reorder
+
+  // Sort by date descending (newest left)
+  const sorted = [...allThs].sort((a, b) => b.dataset.date.localeCompare(a.dataset.date));
+
+  // Check if already in correct order
+  let needsReorder = false;
+  allThs.forEach((th, i) => {
+    if (th.dataset.date !== sorted[i].dataset.date) needsReorder = true;
+  });
+  if (!needsReorder) return;
+
+  // Move header ths into sorted order (insert after machine-name th)
+  const machineTh = headerRow.querySelector('th:first-child');
+  sorted.forEach(th => machineTh.after(th)); // repeatedly inserting after machineTh reverses, so do in reverse
+  // Actually insertAdjacentElement preserves order if we go last-to-first:
+  // Re-do: append in reverse sorted order after machine th
+  sorted.slice().reverse().forEach(th => machineTh.after(th));
+
+  // Reorder tds in each exercise row and save-row to match
+  document.querySelectorAll('tbody tr').forEach(tr => {
+    // Get all date-tagged tds
+    const dateTds = Array.from(tr.querySelectorAll('td[data-date]'));
+    if (!dateTds.length) return;
+    // Sort by the same order as sorted ths
+    const sortedTds = sorted.map(th => dateTds.find(td => td.dataset.date === th.dataset.date)).filter(Boolean);
+    // Re-insert after first td (machine name)
+    const firstTd = tr.querySelector('td:first-child');
+    sortedTds.slice().reverse().forEach(td => firstTd.after(td));
+  });
+
+  // Update date-latest class: newest column (sorted[0]) gets it
+  headerRow.querySelectorAll('th[data-date]').forEach(th => th.classList.remove('date-latest'));
+  if (sorted[0]) sorted[0].classList.add('date-latest');
+}
 
 // ═══════════════════════════════════════════════════════════════
 // BOOT
