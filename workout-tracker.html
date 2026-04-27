@@ -785,10 +785,61 @@
   /* save-row stats total uses same classes, no extra needed */
   .save-row td .stats-label { color: var(--text-dim); }
   .save-row td .stats-value { font-size: 11px; }
+
+  /* ── Pull to refresh ── */
+  .ptr-indicator {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 0;
+    overflow: hidden;
+    background: var(--bg);
+    z-index: 500;
+    transition: height 0.15s ease;
+    border-bottom: 1px solid transparent;
+  }
+  .ptr-indicator.pulling {
+    border-bottom-color: var(--border);
+  }
+  .ptr-indicator.releasing {
+    height: 52px !important;
+    border-bottom-color: var(--accent);
+  }
+  .ptr-inner {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-dim);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    transition: color 0.15s;
+  }
+  .ptr-indicator.releasing .ptr-inner {
+    color: var(--accent);
+  }
+  .ptr-arrow {
+    font-size: 14px;
+    display: inline-block;
+    transition: transform 0.2s ease;
+  }
+  .ptr-indicator.releasing .ptr-arrow {
+    transform: rotate(180deg);
+  }
 </style>
 </head>
 <body>
 
+
+<div class="ptr-indicator" id="ptrIndicator">
+  <div class="ptr-inner">
+    <span class="ptr-arrow">↓</span>
+    <span class="ptr-label">Pull to refresh</span>
+  </div>
+</div>
 <header>
   <div class="logo">LIFT LOG</div>
   <div class="header-export-prompt" id="headerExportPrompt">
@@ -970,15 +1021,13 @@ function buildPrevCellHTML(date, machine) {
   const showUp = prevMax !== null && curMax > prevMax;
   const maxIdx = groups.reduce((mi, g, i) => g.weight > groups[mi].weight ? i : mi, 0);
   const note = getNote(date, machine);
-  let html = '<div style="display:flex;align-items:center;gap:2px;">';
-  html += '<div class="wg-row" style="flex:1;">';
+  let html = '<div class="wg-row">';
   groups.forEach((g, i) => {
     const kg = i === groups.length - 1 ? 'kg' : '';
     const arrow = (showUp && i === maxIdx) ? '<div class="wg-up">▲</div>' : '';
     const setsHtml = g.reps.map(r => `<div class="wg-set">${r}</div>`).join('');
     html += `<div class="wg">${arrow}<div class="wg-weight">${fmtW(g.weight)}${kg}</div><div class="wg-sets">${setsHtml}</div></div>`;
   });
-  html += '</div>';
   if (note) {
     html += `<span class="note-icon" data-note="${note.replace(/"/g,'&quot;')}">i</span>`;
   }
@@ -2484,6 +2533,73 @@ document.getElementById('statsToggle').addEventListener('click', e => {
     enterStatsMode();
   }
 });
+
+
+// ═══════════════════════════════════════════════════════════════
+// PULL TO REFRESH
+// ═══════════════════════════════════════════════════════════════
+(function() {
+  const indicator = document.getElementById('ptrIndicator');
+  const label = indicator.querySelector('.ptr-label');
+  const THRESHOLD = 72;  // px to pull before triggering
+  const MAX_PULL = 90;
+  let startY = 0;
+  let pulling = false;
+  let currentPull = 0;
+
+  function canPull() {
+    // Only pull when scrolled to very top
+    return window.scrollY <= 0;
+  }
+
+  document.addEventListener('touchstart', e => {
+    if (!canPull()) return;
+    startY = e.touches[0].clientY;
+    pulling = false;
+    currentPull = 0;
+  }, { passive: true });
+
+  document.addEventListener('touchmove', e => {
+    if (!canPull() && currentPull === 0) return;
+    const dy = e.touches[0].clientY - startY;
+    if (dy <= 0) {
+      if (currentPull > 0) {
+        currentPull = 0;
+        indicator.style.height = '0';
+        indicator.classList.remove('pulling', 'releasing');
+      }
+      return;
+    }
+    pulling = true;
+    currentPull = Math.min(dy * 0.5, MAX_PULL); // dampen
+    indicator.style.height = currentPull + 'px';
+    if (currentPull >= THRESHOLD) {
+      indicator.classList.add('releasing');
+      indicator.classList.remove('pulling');
+      label.textContent = 'Release to refresh';
+    } else {
+      indicator.classList.add('pulling');
+      indicator.classList.remove('releasing');
+      label.textContent = 'Pull to refresh';
+    }
+  }, { passive: true });
+
+  document.addEventListener('touchend', () => {
+    if (!pulling) return;
+    if (currentPull >= THRESHOLD) {
+      // Trigger refresh — reload from localStorage
+      indicator.style.height = '52px';
+      setTimeout(() => {
+        window.location.reload();
+      }, 300);
+    } else {
+      indicator.style.height = '0';
+      indicator.classList.remove('pulling', 'releasing');
+      currentPull = 0;
+      pulling = false;
+    }
+  }, { passive: true });
+})();
 
 // ═══════════════════════════════════════════════════════════════
 // BOOT
