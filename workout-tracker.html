@@ -883,6 +883,86 @@
     font-weight: 600;
     cursor: pointer;
   }
+
+  /* ── Exercise name cell: tappable ── */
+  .machine-name {
+    cursor: pointer;
+  }
+  .machine-name:active { color: var(--text-muted); }
+
+  /* ── Exercise context menu ── */
+  /* reuses .ctx-menu styles */
+
+  /* ── Stats bottom sheet ── */
+  .stats-sheet-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 1500;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+  }
+  .stats-sheet-backdrop.open {
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .stats-sheet {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: #1a1a1d;
+    border-radius: 16px 16px 0 0;
+    border-top: 1px solid var(--border);
+    z-index: 1501;
+    transform: translateY(100%);
+    transition: transform 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+    max-height: 92vh;
+    display: flex;
+    flex-direction: column;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  .stats-sheet.open { transform: translateY(0); }
+  .stats-sheet-handle {
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    margin: 10px auto 0;
+    flex-shrink: 0;
+  }
+  .stats-sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px 8px;
+    flex-shrink: 0;
+  }
+  .stats-sheet-title {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text);
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+  }
+  .stats-sheet-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 20px;
+    cursor: pointer;
+    padding: 4px 8px;
+    line-height: 1;
+    touch-action: manipulation;
+  }
+  .stats-sheet-body {
+    padding: 0 16px 24px;
+    flex: 1;
+    overflow: hidden;
+  }
+  .stats-chart-wrap {
+    width: 100%;
+    /* height set by JS based on available space */
+  }
 </style>
 </head>
 <body>
@@ -960,6 +1040,19 @@
 <div class="saved-toast" id="savedToast">Saved. Back up data? <a id="toastExportLink">Export CSV</a></div>
 <div class="sticky-bottom" id="stickyBottom">
   <button class="new-session-btn" id="newSessionBtn">+ New Session</button>
+</div>
+
+
+<div class="stats-sheet-backdrop" id="statsSheetBackdrop"></div>
+<div class="stats-sheet" id="statsSheet">
+  <div class="stats-sheet-handle"></div>
+  <div class="stats-sheet-header">
+    <div class="stats-sheet-title" id="statsSheetTitle"></div>
+    <button class="stats-sheet-close" id="statsSheetClose">&#x2715;</button>
+  </div>
+  <div class="stats-sheet-body">
+    <canvas id="statsChart"></canvas>
+  </div>
 </div>
 
 <script>
@@ -1175,6 +1268,7 @@ function render() {
   tbody.appendChild(saveRow);
 
   wireHeaderClicks();
+  wireExerciseNameClicks();
   showNewSessionBtn();
 
   // Show empty state when no exercises defined yet
@@ -2525,8 +2619,12 @@ document.addEventListener('click', e => {
   }
 });
 
-function addExerciseRow(name) {
-  MACHINES.push(name);
+function addExerciseRow(name, insertIdx) {
+  if (insertIdx === undefined || insertIdx >= MACHINES.length) {
+    MACHINES.push(name);
+  } else {
+    MACHINES.splice(insertIdx, 0, name);
+  }
   savePersisted();
   updateEmptyState();
 
@@ -2576,8 +2674,13 @@ function addExerciseRow(name) {
     tr.appendChild(td);
   });
 
-  // Insert before save-row
-  tbody.insertBefore(tr, saveRow);
+  // Insert at correct position (before save-row, respecting insertIdx)
+  const allExRows = Array.from(tbody.querySelectorAll('tr[data-exercise]'));
+  if (insertIdx !== undefined && insertIdx < allExRows.length) {
+    tbody.insertBefore(tr, allExRows[insertIdx]);
+  } else {
+    tbody.insertBefore(tr, saveRow);
+  }
 
   // Also add an empty td to the save-row for each column
   // (save-row already has the right number; no action needed since we mirror ths)
@@ -2770,6 +2873,366 @@ document.getElementById('toastExportLink').addEventListener('click', () => {
   clearTimeout(toastTimer);
 });
 
+
+// ═══════════════════════════════════════════════════════════════
+// EXERCISE NAME CONTEXT MENU
+// ═══════════════════════════════════════════════════════════════
+const exMenu = document.getElementById('ctxMenu'); // reuse shared ctx menu
+let activeExRow = null;
+
+function openExerciseMenu(tr, anchorEl) {
+  if (activeRow) { closeMenu(); }
+  const machine = tr.dataset.exercise;
+  const idx = MACHINES.indexOf(machine);
+
+  menu.innerHTML = '';
+
+  // Stats
+  const statsBtn = document.createElement('button');
+  statsBtn.className = 'ctx-item accent';
+  statsBtn.textContent = '📊  Stats';
+  statsBtn.addEventListener('click', () => { closeMenu(); openStatsSheet(machine); });
+  menu.appendChild(statsBtn);
+
+  menu.appendChild(mkDiv('ctx-divider'));
+
+  // Edit name
+  const editBtn = document.createElement('button');
+  editBtn.className = 'ctx-item';
+  editBtn.textContent = '✎  Edit name';
+  editBtn.addEventListener('click', () => { closeMenu(); openEditNamePopover(machine, tr, anchorEl); });
+  menu.appendChild(editBtn);
+
+  // Add above
+  const addAboveBtn = document.createElement('button');
+  addAboveBtn.className = 'ctx-item';
+  addAboveBtn.textContent = '↑  Add exercise above';
+  addAboveBtn.addEventListener('click', () => { closeMenu(); openAddExPopover(anchorEl, idx); });
+  menu.appendChild(addAboveBtn);
+
+  // Add below
+  const addBelowBtn = document.createElement('button');
+  addBelowBtn.className = 'ctx-item';
+  addBelowBtn.textContent = '↓  Add exercise below';
+  addBelowBtn.addEventListener('click', () => { closeMenu(); openAddExPopover(anchorEl, idx + 1); });
+  menu.appendChild(addBelowBtn);
+
+  menu.appendChild(mkDiv('ctx-divider'));
+
+  // Delete
+  const delBtn = document.createElement('button');
+  delBtn.className = 'ctx-item danger';
+  delBtn.textContent = '✕  Delete exercise';
+  delBtn.addEventListener('click', () => {
+    menu.innerHTML = '';
+    const msg = document.createElement('div');
+    msg.style.cssText = 'padding:10px 16px 6px; font-family:DM Sans,sans-serif; font-size:13px; color:var(--text-muted);';
+    msg.textContent = `Delete "${machine}"?`;
+    menu.appendChild(msg);
+    const btns = document.createElement('div');
+    btns.style.cssText = 'display:flex; gap:6px; padding:4px 10px 10px;';
+    const yes = document.createElement('button');
+    yes.className = 'ctx-item danger';
+    yes.style.cssText = 'flex:1;text-align:center;border-radius:6px;border:1px solid var(--danger);';
+    yes.textContent = 'Delete';
+    yes.addEventListener('click', () => { closeMenu(); deleteExercise(machine); });
+    const no = document.createElement('button');
+    no.className = 'ctx-item';
+    no.style.cssText = 'flex:1;text-align:center;border-radius:6px;border:1px solid var(--border);';
+    no.textContent = 'Cancel';
+    no.addEventListener('click', closeMenu);
+    btns.appendChild(no); btns.appendChild(yes);
+    menu.appendChild(btns);
+  });
+  menu.appendChild(delBtn);
+
+  positionMenu(menu, anchorEl, 230, 300);
+  menu.classList.add('open');
+  backdrop.classList.add('open');
+}
+
+// Wire exercise name clicks
+function wireExerciseNameClicks() {
+  document.querySelectorAll('tbody tr[data-exercise] td:first-child .machine-name').forEach(el => {
+    el.addEventListener('click', function(e) {
+      e.stopPropagation();
+      const tr = this.closest('tr');
+      openExerciseMenu(tr, this);
+    });
+  });
+}
+
+// ── Edit exercise name ────────────────────────────────────────
+let editNamePop = null;
+function openEditNamePopover(machine, tr, anchor) {
+  if (editNamePop) { editNamePop.remove(); editNamePop = null; }
+  const pop = document.createElement('div');
+  pop.className = 'add-ex-popover';
+  pop.innerHTML = `
+    <label>Exercise name</label>
+    <input type="text" value="${machine}" maxlength="40">
+    <div class="popover-actions">
+      <button class="pop-cancel">Cancel</button>
+      <button class="pop-ok">Save</button>
+    </div>`;
+  document.body.appendChild(pop);
+  editNamePop = pop;
+  const rect = anchor.getBoundingClientRect();
+  let top = rect.bottom + 6, left = rect.left;
+  if (left + 250 > window.innerWidth - 8) left = window.innerWidth - 258;
+  if (top + 140 > window.innerHeight - 8) top = rect.top - 146;
+  pop.style.top = top + 'px'; pop.style.left = left + 'px';
+  const input = pop.querySelector('input');
+  input.focus(); input.select();
+  const commit = () => {
+    const newName = input.value.trim();
+    if (!newName || newName === machine) { pop.remove(); editNamePop = null; return; }
+    if (MACHINES.includes(newName)) { input.style.borderColor = 'var(--danger)'; return; }
+    // Rename in MACHINES
+    const idx = MACHINES.indexOf(machine);
+    MACHINES[idx] = newName;
+    // Rename in sessions
+    sessions.forEach(r => { if (r.machine === machine) r.machine = newName; });
+    // Update DOM
+    tr.dataset.exercise = newName;
+    tr.querySelector('.machine-name').textContent = newName;
+    savePersisted();
+    pop.remove(); editNamePop = null;
+  };
+  pop.querySelector('.pop-ok').addEventListener('click', commit);
+  pop.querySelector('.pop-cancel').addEventListener('click', () => { pop.remove(); editNamePop = null; });
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { pop.remove(); editNamePop = null; } });
+  // outside click
+  setTimeout(() => {
+    document.addEventListener('click', function handler(e) {
+      if (!pop.contains(e.target)) { pop.remove(); editNamePop = null; document.removeEventListener('click', handler); }
+    });
+  }, 0);
+}
+
+// ── Add exercise at index ─────────────────────────────────────
+function openAddExPopover(anchor, insertIdx) {
+  if (addExPopover) { closeAddExPopover(); }
+  const pop = document.createElement('div');
+  pop.className = 'add-ex-popover';
+  pop.innerHTML = `
+    <label>Exercise name</label>
+    <input type="text" placeholder="e.g. Bicep Curl" maxlength="40">
+    <div class="popover-actions">
+      <button class="pop-cancel">Cancel</button>
+      <button class="pop-ok">Add</button>
+    </div>`;
+  document.body.appendChild(pop);
+  addExPopover = pop;
+  const rect = anchor.getBoundingClientRect();
+  let top = rect.bottom + 6, left = rect.left;
+  if (left + 250 > window.innerWidth - 8) left = window.innerWidth - 258;
+  if (top + 140 > window.innerHeight - 8) top = rect.top - 146;
+  pop.style.top = top + 'px'; pop.style.left = left + 'px';
+  const input = pop.querySelector('input');
+  input.focus();
+  const commit = () => {
+    const name = input.value.trim();
+    if (!name) { closeAddExPopover(); return; }
+    if (MACHINES.includes(name)) { alert(`"${name}" already exists.`); return; }
+    closeAddExPopover();
+    addExerciseRow(name, insertIdx);
+  };
+  pop.querySelector('.pop-ok').addEventListener('click', e => { e.stopPropagation(); commit(); });
+  pop.querySelector('.pop-cancel').addEventListener('click', closeAddExPopover);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); commit(); } if (e.key === 'Escape') closeAddExPopover(); });
+}
+
+// ── Delete exercise ───────────────────────────────────────────
+function deleteExercise(machine) {
+  const idx = MACHINES.indexOf(machine);
+  if (idx === -1) return;
+  MACHINES.splice(idx, 1);
+  for (let i = sessions.length - 1; i >= 0; i--) {
+    if (sessions[i].machine === machine) sessions.splice(i, 1);
+  }
+  savePersisted();
+  // Remove the row from DOM
+  const tr = document.querySelector(`tbody tr[data-exercise="${machine}"]`);
+  if (tr) tr.remove();
+  updateEmptyState();
+}
+
+// ═══════════════════════════════════════════════════════════════
+// STATS SHEET
+// ═══════════════════════════════════════════════════════════════
+const statsSheetEl = document.getElementById('statsSheet');
+const statsSheetBackdrop = document.getElementById('statsSheetBackdrop');
+let statsSheetOpen = false;
+let sheetStartY = 0;
+let sheetCurrentY = 0;
+
+function openStatsSheet(machine) {
+  document.getElementById('statsSheetTitle').textContent = machine;
+  drawStatsChart(machine);
+  statsSheetEl.classList.add('open');
+  statsSheetBackdrop.classList.add('open');
+  statsSheetOpen = true;
+}
+
+function closeStatsSheet() {
+  statsSheetEl.classList.remove('open');
+  statsSheetBackdrop.classList.remove('open');
+  statsSheetOpen = false;
+}
+
+document.getElementById('statsSheetClose').addEventListener('click', closeStatsSheet);
+statsSheetBackdrop.addEventListener('click', closeStatsSheet);
+
+// Swipe down to close
+statsSheetEl.addEventListener('touchstart', e => {
+  sheetStartY = e.touches[0].clientY;
+  sheetCurrentY = 0;
+}, { passive: true });
+statsSheetEl.addEventListener('touchmove', e => {
+  const dy = e.touches[0].clientY - sheetStartY;
+  if (dy > 0) {
+    sheetCurrentY = dy;
+    statsSheetEl.style.transform = `translateY(${dy}px)`;
+    statsSheetEl.style.transition = 'none';
+  }
+}, { passive: true });
+statsSheetEl.addEventListener('touchend', () => {
+  statsSheetEl.style.transition = '';
+  if (sheetCurrentY > 80) {
+    closeStatsSheet();
+  }
+  statsSheetEl.style.transform = '';
+});
+
+function drawStatsChart(machine) {
+  const canvas = document.getElementById('statsChart');
+  const ctx = canvas.getContext('2d');
+
+  // Dates in reverse chronological order (newest first = leftmost on chart)
+  const dates = getDates(); // already newest-first
+  if (!dates.length) { ctx.clearRect(0, 0, canvas.width, canvas.height); return; }
+
+  // Filter to dates that have data for this machine
+  const dateDots = dates.map(d => {
+    const sets = getSets(d, machine);
+    if (!sets.length) return null;
+    const topWeight = Math.max(...sets.map(s => s.weight));
+    const volume = sets.reduce((s, r) => s + r.weight * r.reps, 0);
+    return { date: d, topWeight, volume };
+  }).filter(Boolean);
+
+  if (!dateDots.length) {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    return;
+  }
+
+  // Canvas sizing — fit mobile screen
+  const DPR = window.devicePixelRatio || 1;
+  const W = statsSheetEl.offsetWidth - 32; // 16px padding each side
+  const H = Math.min(220, window.innerHeight * 0.28);
+  canvas.style.width = W + 'px';
+  canvas.style.height = H + 'px';
+  canvas.width = W * DPR;
+  canvas.height = H * DPR;
+  ctx.scale(DPR, DPR);
+
+  const PAD_L = 44, PAD_R = 44, PAD_T = 14, PAD_B = 8;
+  const chartW = W - PAD_L - PAD_R;
+  const chartH = H - PAD_T - PAD_B;
+  const n = dateDots.length;
+
+  // Scales
+  const weights = dateDots.map(d => d.topWeight);
+  const volumes = dateDots.map(d => d.volume);
+  const wMin = Math.min(...weights) * 0.9;
+  const wMax = Math.max(...weights) * 1.1;
+  const vMin = 0;
+  const vMax = Math.max(...volumes) * 1.15;
+
+  const xPos = i => PAD_L + (n === 1 ? chartW / 2 : (i / (n - 1)) * chartW);
+  const yW = v => PAD_T + chartH - ((v - wMin) / (wMax - wMin)) * chartH;
+  const yV = v => PAD_T + chartH - ((v - vMin) / (vMax - vMin)) * chartH;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Colours
+  const ACCENT = '#c8f135';
+  const VOL_COLOR = 'rgba(99,160,255,0.35)'; // muted blue bars
+  const VOL_LINE = 'rgba(99,160,255,0.0)';
+  const WEIGHT_COLOR = ACCENT;
+
+  // Bar width
+  const barW = n === 1 ? 24 : Math.max(6, Math.min(20, (chartW / n) * 0.55));
+
+  // ── Draw volume bars ──────────────────────────────────────────
+  dateDots.forEach((d, i) => {
+    const x = xPos(i);
+    const yTop = yV(d.volume);
+    const barH = (PAD_T + chartH) - yTop;
+    const r = 3;
+    ctx.fillStyle = VOL_COLOR;
+    ctx.beginPath();
+    ctx.moveTo(x - barW/2 + r, yTop);
+    ctx.lineTo(x + barW/2 - r, yTop);
+    ctx.quadraticCurveTo(x + barW/2, yTop, x + barW/2, yTop + r);
+    ctx.lineTo(x + barW/2, yTop + barH);
+    ctx.lineTo(x - barW/2, yTop + barH);
+    ctx.lineTo(x - barW/2, yTop + r);
+    ctx.quadraticCurveTo(x - barW/2, yTop, x - barW/2 + r, yTop);
+    ctx.closePath();
+    ctx.fill();
+  });
+
+  // ── Draw weight line ──────────────────────────────────────────
+  ctx.strokeStyle = WEIGHT_COLOR;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = 'round';
+  ctx.beginPath();
+  dateDots.forEach((d, i) => {
+    const x = xPos(i), y = yW(d.topWeight);
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.stroke();
+
+  // ── Dots on weight line ───────────────────────────────────────
+  dateDots.forEach((d, i) => {
+    const x = xPos(i), y = yW(d.topWeight);
+    ctx.beginPath();
+    ctx.arc(x, y, 3.5, 0, Math.PI * 2);
+    ctx.fillStyle = WEIGHT_COLOR;
+    ctx.fill();
+    ctx.strokeStyle = '#1a1a1d';
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+  });
+
+  // ── Y-axis labels: weight (left) ──────────────────────────────
+  ctx.font = '9px Space Mono, monospace';
+  ctx.textAlign = 'right';
+  ctx.fillStyle = ACCENT;
+  [Math.round(wMax), Math.round(wMin)].forEach(v => {
+    const y = yW(v);
+    ctx.fillText(v + 'kg', PAD_L - 5, y + 3);
+    // subtle gridline
+    ctx.beginPath();
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    ctx.moveTo(PAD_L, y); ctx.lineTo(PAD_L + chartW, y);
+    ctx.stroke();
+  });
+
+  // ── Y-axis labels: volume (right) ────────────────────────────
+  ctx.textAlign = 'left';
+  ctx.fillStyle = 'rgba(99,160,255,0.9)';
+  const vTop = Math.round(vMax / 100) * 100;
+  [vTop, 0].forEach(v => {
+    const y = yV(v);
+    const label = v >= 1000 ? (v/1000).toFixed(1) + 'k' : String(v);
+    ctx.fillText(label, PAD_L + chartW + 5, y + 3);
+  });
+}
+
 // ═══════════════════════════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════════════════════════
@@ -2786,5 +3249,6 @@ document.getElementById('emptyImportBtn').addEventListener('click', () => {
   document.getElementById('csvImportInput').click();
 });
 </script>
+
 </body>
 </html>
