@@ -922,13 +922,7 @@
     padding-bottom: env(safe-area-inset-bottom, 0px);
   }
   .stats-sheet.open { transform: translateY(0); }
-  .stats-sheet-handle {
-    width: 36px; height: 4px;
-    background: var(--border);
-    border-radius: 2px;
-    margin: 10px auto 0;
-    flex-shrink: 0;
-  }
+  .stats-sheet-handle { display: none; }
   .stats-sheet-header {
     display: flex;
     align-items: center;
@@ -1041,7 +1035,6 @@
 <div class="sticky-bottom" id="stickyBottom">
   <button class="new-session-btn" id="newSessionBtn">+ New Session</button>
 </div>
-
 
 <div class="stats-sheet-backdrop" id="statsSheetBackdrop"></div>
 <div class="stats-sheet" id="statsSheet">
@@ -1230,10 +1223,18 @@ function render() {
   // Header — just machine col + past dates
   const headerRow = document.getElementById('headerRow');
   headerRow.innerHTML = '<th></th>';
+  const currentYear = new Date().getFullYear().toString();
   dates.forEach((d, i) => {
     const th = document.createElement('th');
     if (i === 0) th.className = 'date-latest';
-    th.innerHTML = buildThInner(fmtDate(d), 'read');
+    const thisYear = d.split('-')[0];
+    // Show year suffix when: year differs from current year AND
+    // either it's the last column (oldest) or the column to the right (i+1) is a different year
+    const nextDate = dates[i + 1];
+    const nextYear = nextDate ? nextDate.split('-')[0] : null;
+    const showYear = thisYear !== currentYear && thisYear !== nextYear;
+    const label = showYear ? fmtDate(d) + " '" + thisYear.slice(2) : fmtDate(d);
+    th.innerHTML = buildThInner(label, 'read');
     th.dataset.date = d;
     headerRow.appendChild(th);
   });
@@ -1493,13 +1494,7 @@ function startNewSession() {
 
   // Prevent duplicate date
   if (getDates().includes(date)) {
-    const sb = document.getElementById('stickyBottom');
-    const orig = sb.innerHTML;
-    sb.innerHTML = `<div style="
-      font-family:'Space Mono',monospace; font-size:11px; color:var(--danger);
-      text-align:center; padding:14px 16px; text-transform:uppercase; letter-spacing:0.3px;
-    ">Session for ${fmtDate(date)} already exists — edit it instead</div>`;
-    setTimeout(() => { sb.innerHTML = orig; document.getElementById('newSessionBtn').addEventListener('click', startNewSession); }, 3000);
+    showErrorToast(`Session for ${fmtDate(date)} already exists — edit it instead`);
     return;
   }
 
@@ -2562,49 +2557,6 @@ function closeAddExPopover() {
   if (addExPopover) { addExPopover.remove(); addExPopover = null; }
 }
 
-function openAddExPopover(anchor) {
-  if (addExPopover) { closeAddExPopover(); return; }
-
-  const pop = document.createElement('div');
-  pop.className = 'add-ex-popover';
-  pop.innerHTML = `
-    <label>Exercise name</label>
-    <input type="text" placeholder="e.g. Bicep Curl" maxlength="40">
-    <div class="popover-actions">
-      <button class="pop-cancel">Cancel</button>
-      <button class="pop-ok">Add</button>
-    </div>`;
-  document.body.appendChild(pop);
-  addExPopover = pop;
-
-  // Position near anchor element
-  const rect = anchor.getBoundingClientRect();
-  let top = rect.bottom + 6;
-  let left = rect.left;
-  if (left + 250 > window.innerWidth - 8) left = window.innerWidth - 258;
-  if (top + 140 > window.innerHeight - 8) top = rect.top - 146;
-  pop.style.top = top + 'px';
-  pop.style.left = left + 'px';
-
-  const input = pop.querySelector('input');
-  input.focus();
-
-  const commit = () => {
-    const name = input.value.trim();
-    if (!name) { closeAddExPopover(); return; }
-    if (MACHINES.includes(name)) { alert(`"${name}" already exists.`); return; }
-    closeAddExPopover();
-    addExerciseRow(name);
-  };
-
-  pop.querySelector('.pop-ok').addEventListener('click', commit);
-  pop.querySelector('.pop-cancel').addEventListener('click', closeAddExPopover);
-  input.addEventListener('keydown', e => {
-    if (e.key === 'Enter') { e.preventDefault(); commit(); }
-    if (e.key === 'Escape') closeAddExPopover();
-  });
-}
-
 document.getElementById('addExerciseTab').addEventListener('click', function(e) {
   e.stopPropagation();
   openAddExPopover(this);
@@ -2682,8 +2634,7 @@ function addExerciseRow(name, insertIdx) {
     tbody.insertBefore(tr, saveRow);
   }
 
-  // Also add an empty td to the save-row for each column
-  // (save-row already has the right number; no action needed since we mirror ths)
+  wireExerciseNameClicks();
 }
 
 
@@ -2861,17 +2812,38 @@ function reorderColumnByDate(date) {
 // SAVED TOAST
 // ═══════════════════════════════════════════════════════════════
 let toastTimer = null;
-function showSavedToast() {
+function clearToast() {
   const toast = document.getElementById('savedToast');
-  toast.classList.add('visible');
+  toast.classList.remove('visible');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('visible'), 8000);
 }
-document.getElementById('toastExportLink').addEventListener('click', () => {
-  exportCSV();
-  document.getElementById('savedToast').classList.remove('visible');
-  clearTimeout(toastTimer);
-});
+
+function showSavedToast() {
+  clearToast();
+  const toast = document.getElementById('savedToast');
+  // Reset content to default (in case it was customised)
+  toast.innerHTML = 'Saved. Back up data? <a id="toastExportLink">Export CSV</a>';
+  document.getElementById('toastExportLink').addEventListener('click', () => {
+    exportCSV();
+    clearToast();
+  });
+  // Small delay so the transition fires reliably
+  requestAnimationFrame(() => {
+    toast.classList.add('visible');
+    toastTimer = setTimeout(() => toast.classList.remove('visible'), 8000);
+  });
+}
+
+function showErrorToast(msg) {
+  clearToast();
+  const toast = document.getElementById('savedToast');
+  toast.innerHTML = `<span style="color:var(--danger)">${msg}</span>`;
+  requestAnimationFrame(() => {
+    toast.classList.add('visible');
+    toastTimer = setTimeout(() => toast.classList.remove('visible'), 4000);
+  });
+}
+// toastExportLink wired inside showSavedToast()
 
 
 // ═══════════════════════════════════════════════════════════════
@@ -2891,7 +2863,7 @@ function openExerciseMenu(tr, anchorEl) {
   const statsBtn = document.createElement('button');
   statsBtn.className = 'ctx-item accent';
   statsBtn.textContent = '📊  Stats';
-  statsBtn.addEventListener('click', () => { closeMenu(); openStatsSheet(machine); });
+  statsBtn.addEventListener('click', () => { closeMenu(); setTimeout(() => openStatsSheet(machine), 0); });
   menu.appendChild(statsBtn);
 
   menu.appendChild(mkDiv('ctx-divider'));
@@ -2900,21 +2872,21 @@ function openExerciseMenu(tr, anchorEl) {
   const editBtn = document.createElement('button');
   editBtn.className = 'ctx-item';
   editBtn.textContent = '✎  Edit name';
-  editBtn.addEventListener('click', () => { closeMenu(); openEditNamePopover(machine, tr, anchorEl); });
+  editBtn.addEventListener('click', () => { closeMenu(); setTimeout(() => openEditNamePopover(machine, tr, anchorEl), 0); });
   menu.appendChild(editBtn);
 
   // Add above
   const addAboveBtn = document.createElement('button');
   addAboveBtn.className = 'ctx-item';
   addAboveBtn.textContent = '↑  Add exercise above';
-  addAboveBtn.addEventListener('click', () => { closeMenu(); openAddExPopover(anchorEl, idx); });
+  addAboveBtn.addEventListener('click', () => { closeMenu(); setTimeout(() => openAddExPopover(anchorEl, idx), 0); });
   menu.appendChild(addAboveBtn);
 
   // Add below
   const addBelowBtn = document.createElement('button');
   addBelowBtn.className = 'ctx-item';
   addBelowBtn.textContent = '↓  Add exercise below';
-  addBelowBtn.addEventListener('click', () => { closeMenu(); openAddExPopover(anchorEl, idx + 1); });
+  addBelowBtn.addEventListener('click', () => { closeMenu(); setTimeout(() => openAddExPopover(anchorEl, idx + 1), 0); });
   menu.appendChild(addBelowBtn);
 
   menu.appendChild(mkDiv('ctx-divider'));
@@ -2954,6 +2926,8 @@ function openExerciseMenu(tr, anchorEl) {
 // Wire exercise name clicks
 function wireExerciseNameClicks() {
   document.querySelectorAll('tbody tr[data-exercise] td:first-child .machine-name').forEach(el => {
+    if (el.dataset.wired) return; // already wired
+    el.dataset.wired = '1';
     el.addEventListener('click', function(e) {
       e.stopPropagation();
       const tr = this.closest('tr');
@@ -3064,8 +3038,6 @@ function deleteExercise(machine) {
 const statsSheetEl = document.getElementById('statsSheet');
 const statsSheetBackdrop = document.getElementById('statsSheetBackdrop');
 let statsSheetOpen = false;
-let sheetStartY = 0;
-let sheetCurrentY = 0;
 
 function openStatsSheet(machine) {
   document.getElementById('statsSheetTitle').textContent = machine;
@@ -3084,88 +3056,63 @@ function closeStatsSheet() {
 document.getElementById('statsSheetClose').addEventListener('click', closeStatsSheet);
 statsSheetBackdrop.addEventListener('click', closeStatsSheet);
 
-// Swipe down to close
-statsSheetEl.addEventListener('touchstart', e => {
-  sheetStartY = e.touches[0].clientY;
-  sheetCurrentY = 0;
-}, { passive: true });
-statsSheetEl.addEventListener('touchmove', e => {
-  const dy = e.touches[0].clientY - sheetStartY;
-  if (dy > 0) {
-    sheetCurrentY = dy;
-    statsSheetEl.style.transform = `translateY(${dy}px)`;
-    statsSheetEl.style.transition = 'none';
-  }
-}, { passive: true });
-statsSheetEl.addEventListener('touchend', () => {
-  statsSheetEl.style.transition = '';
-  if (sheetCurrentY > 80) {
-    closeStatsSheet();
-  }
-  statsSheetEl.style.transform = '';
-});
+
 
 function drawStatsChart(machine) {
   const canvas = document.getElementById('statsChart');
   const ctx = canvas.getContext('2d');
 
-  // Dates in reverse chronological order (newest first = leftmost on chart)
-  const dates = getDates(); // already newest-first
-  if (!dates.length) { ctx.clearRect(0, 0, canvas.width, canvas.height); return; }
-
-  // Filter to dates that have data for this machine
-  const dateDots = dates.map(d => {
+  // Oldest-first (left to right)
+  const allDates = getDates().slice().reverse(); // getDates() is newest-first, reverse for oldest-first
+  const dateDots = allDates.map(d => {
     const sets = getSets(d, machine);
     if (!sets.length) return null;
     const topWeight = Math.max(...sets.map(s => s.weight));
-    const volume = sets.reduce((s, r) => s + r.weight * r.reps, 0);
+    const volume = sets.reduce((acc, s) => acc + s.weight * s.reps, 0);
     return { date: d, topWeight, volume };
   }).filter(Boolean);
 
-  if (!dateDots.length) {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    return;
-  }
-
-  // Canvas sizing — fit mobile screen
   const DPR = window.devicePixelRatio || 1;
-  const W = statsSheetEl.offsetWidth - 32; // 16px padding each side
-  const H = Math.min(220, window.innerHeight * 0.28);
+  const availW = statsSheetEl.offsetWidth - 32;
+  const H = Math.min(200, Math.round(window.innerHeight * 0.26));
+
+  // Max spacing between points to avoid over-spreading
+  const MAX_POINT_GAP = 48;
+  const PAD_L = 8, PAD_R = 8, PAD_T = 14, PAD_B = 8;
+  const n = dateDots.length;
+  const innerW = n <= 1 ? MAX_POINT_GAP : Math.min((n - 1) * MAX_POINT_GAP, availW - PAD_L - PAD_R);
+  const W = Math.min(availW, innerW + PAD_L + PAD_R);
+
   canvas.style.width = W + 'px';
   canvas.style.height = H + 'px';
+  canvas.style.display = 'block'; // left-align naturally
+  canvas.style.marginLeft = '0';
   canvas.width = W * DPR;
   canvas.height = H * DPR;
   ctx.scale(DPR, DPR);
 
-  const PAD_L = 44, PAD_R = 44, PAD_T = 14, PAD_B = 8;
   const chartW = W - PAD_L - PAD_R;
   const chartH = H - PAD_T - PAD_B;
-  const n = dateDots.length;
 
-  // Scales
   const weights = dateDots.map(d => d.topWeight);
   const volumes = dateDots.map(d => d.volume);
-  const wMin = Math.min(...weights) * 0.9;
-  const wMax = Math.max(...weights) * 1.1;
-  const vMin = 0;
+  const wMin = Math.min(...weights) * 0.88;
+  const wMax = Math.max(...weights) * 1.12;
   const vMax = Math.max(...volumes) * 1.15;
 
-  const xPos = i => PAD_L + (n === 1 ? chartW / 2 : (i / (n - 1)) * chartW);
+  const xPos = i => PAD_L + (n <= 1 ? chartW / 2 : (i / (n - 1)) * chartW);
   const yW = v => PAD_T + chartH - ((v - wMin) / (wMax - wMin)) * chartH;
-  const yV = v => PAD_T + chartH - ((v - vMin) / (vMax - vMin)) * chartH;
+  const yV = v => PAD_T + chartH - (v / vMax) * chartH;
 
   ctx.clearRect(0, 0, W, H);
 
-  // Colours
   const ACCENT = '#c8f135';
-  const VOL_COLOR = 'rgba(99,160,255,0.35)'; // muted blue bars
-  const VOL_LINE = 'rgba(99,160,255,0.0)';
-  const WEIGHT_COLOR = ACCENT;
+  const VOL_COLOR = 'rgba(99,160,255,0.28)';
 
   // Bar width
-  const barW = n === 1 ? 24 : Math.max(6, Math.min(20, (chartW / n) * 0.55));
+  const barW = n <= 1 ? 20 : Math.max(6, Math.min(22, (chartW / n) * 0.5));
 
-  // ── Draw volume bars ──────────────────────────────────────────
+  // ── Volume bars ──────────────────────────────────────────────
   dateDots.forEach((d, i) => {
     const x = xPos(i);
     const yTop = yV(d.volume);
@@ -3173,66 +3120,109 @@ function drawStatsChart(machine) {
     const r = 3;
     ctx.fillStyle = VOL_COLOR;
     ctx.beginPath();
-    ctx.moveTo(x - barW/2 + r, yTop);
-    ctx.lineTo(x + barW/2 - r, yTop);
-    ctx.quadraticCurveTo(x + barW/2, yTop, x + barW/2, yTop + r);
-    ctx.lineTo(x + barW/2, yTop + barH);
-    ctx.lineTo(x - barW/2, yTop + barH);
-    ctx.lineTo(x - barW/2, yTop + r);
-    ctx.quadraticCurveTo(x - barW/2, yTop, x - barW/2 + r, yTop);
+    if (barH < r * 2) {
+      ctx.rect(x - barW/2, yTop, barW, barH);
+    } else {
+      ctx.moveTo(x - barW/2 + r, yTop);
+      ctx.lineTo(x + barW/2 - r, yTop);
+      ctx.quadraticCurveTo(x + barW/2, yTop, x + barW/2, yTop + r);
+      ctx.lineTo(x + barW/2, yTop + barH);
+      ctx.lineTo(x - barW/2, yTop + barH);
+      ctx.lineTo(x - barW/2, yTop + r);
+      ctx.quadraticCurveTo(x - barW/2, yTop, x - barW/2 + r, yTop);
+    }
     ctx.closePath();
     ctx.fill();
   });
 
-  // ── Draw weight line ──────────────────────────────────────────
-  ctx.strokeStyle = WEIGHT_COLOR;
-  ctx.lineWidth = 2;
-  ctx.lineJoin = 'round';
-  ctx.beginPath();
-  dateDots.forEach((d, i) => {
-    const x = xPos(i), y = yW(d.topWeight);
-    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-  });
-  ctx.stroke();
+  // ── Weight line ───────────────────────────────────────────────
+  if (n > 1) {
+    ctx.strokeStyle = ACCENT;
+    ctx.lineWidth = 2;
+    ctx.lineJoin = 'round';
+    ctx.beginPath();
+    dateDots.forEach((d, i) => {
+      const x = xPos(i), y = yW(d.topWeight);
+      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+  }
 
-  // ── Dots on weight line ───────────────────────────────────────
+  // ── Dots ─────────────────────────────────────────────────────
   dateDots.forEach((d, i) => {
     const x = xPos(i), y = yW(d.topWeight);
     ctx.beginPath();
-    ctx.arc(x, y, 3.5, 0, Math.PI * 2);
-    ctx.fillStyle = WEIGHT_COLOR;
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = ACCENT;
     ctx.fill();
     ctx.strokeStyle = '#1a1a1d';
     ctx.lineWidth = 1.5;
     ctx.stroke();
   });
 
-  // ── Y-axis labels: weight (left) ──────────────────────────────
-  ctx.font = '9px Space Mono, monospace';
-  ctx.textAlign = 'right';
-  ctx.fillStyle = ACCENT;
-  [Math.round(wMax), Math.round(wMin)].forEach(v => {
-    const y = yW(v);
-    ctx.fillText(v + 'kg', PAD_L - 5, y + 3);
-    // subtle gridline
-    ctx.beginPath();
-    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
-    ctx.lineWidth = 1;
-    ctx.moveTo(PAD_L, y); ctx.lineTo(PAD_L + chartW, y);
-    ctx.stroke();
-  });
+  // ── Tap/click tooltip ─────────────────────────────────────────
+  // Store dot positions for hit testing
+  canvas._dots = dateDots.map((d, i) => ({ x: xPos(i), y: yW(d.topWeight), data: d }));
 
-  // ── Y-axis labels: volume (right) ────────────────────────────
-  ctx.textAlign = 'left';
-  ctx.fillStyle = 'rgba(99,160,255,0.9)';
-  const vTop = Math.round(vMax / 100) * 100;
-  [vTop, 0].forEach(v => {
-    const y = yV(v);
-    const label = v >= 1000 ? (v/1000).toFixed(1) + 'k' : String(v);
-    ctx.fillText(label, PAD_L + chartW + 5, y + 3);
-  });
+  // Remove old listener
+  if (canvas._tapHandler) canvas.removeEventListener('click', canvas._tapHandler);
+  canvas._tapHandler = function(e) {
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = canvas.offsetWidth / rect.width;
+    const mx = (e.clientX - rect.left) * scaleX;
+    // Find nearest dot by x distance
+    let nearest = null, minDx = Infinity;
+    canvas._dots.forEach(dot => {
+      const dx = Math.abs(dot.x - mx);
+      if (dx < minDx) { minDx = dx; nearest = dot; }
+    });
+    if (!nearest || minDx > MAX_POINT_GAP / 2 + 10) return;
+    showChartTooltip(nearest.data, e.clientX, e.clientY);
+  };
+  canvas.addEventListener('click', canvas._tapHandler);
 }
 
+let chartTooltip = null;
+let chartTooltipTimer = null;
+function showChartTooltip(data, cx, cy) {
+  if (chartTooltip) { chartTooltip.remove(); chartTooltip = null; }
+  const tip = document.createElement('div');
+  tip.style.cssText = `
+    position:fixed; background:#1e1e22; border:1px solid var(--border);
+    border-radius:8px; padding:8px 12px; z-index:1600;
+    font-family:'DM Sans',sans-serif; font-size:12px; line-height:1.6;
+    box-shadow:0 4px 16px rgba(0,0,0,0.5); pointer-events:none;`;
+  const [yr,m,d] = data.date.split('-');
+  const MONTHS_T = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const dateLabel = `${parseInt(d)} ${MONTHS_T[parseInt(m)-1]} ${yr}`;
+  tip.innerHTML = `
+    <div style="color:var(--text-muted);font-size:10px;font-family:'Space Mono',monospace;margin-bottom:4px;">${dateLabel}</div>
+    <div style="color:#c8f135;">&#9679; ${fmtW(data.topWeight)}kg</div>
+    <div style="color:rgba(99,160,255,0.9);">&#9646; ${data.volume.toLocaleString()}kg vol</div>`;
+  document.body.appendChild(tip);
+  chartTooltip = tip;
+
+  // Position above tap point
+  const tw = 140, th2 = 80;
+  let left = cx - tw / 2;
+  let top = cy - th2 - 12;
+  if (left < 8) left = 8;
+  if (left + tw > window.innerWidth - 8) left = window.innerWidth - tw - 8;
+  if (top < 8) top = cy + 16;
+  tip.style.left = left + 'px';
+  tip.style.top = top + 'px';
+
+  clearTimeout(chartTooltipTimer);
+  chartTooltipTimer = setTimeout(() => { if (chartTooltip) { chartTooltip.remove(); chartTooltip = null; } }, 3000);
+}
+
+// Close tooltip on tap elsewhere
+document.addEventListener('click', e => {
+  if (chartTooltip && !e.target.closest('#statsChart')) {
+    chartTooltip.remove(); chartTooltip = null;
+    clearTimeout(chartTooltipTimer);
+  }
+});
 // ═══════════════════════════════════════════════════════════════
 // BOOT
 // ═══════════════════════════════════════════════════════════════
@@ -3249,6 +3239,5 @@ document.getElementById('emptyImportBtn').addEventListener('click', () => {
   document.getElementById('csvImportInput').click();
 });
 </script>
-
 </body>
 </html>
